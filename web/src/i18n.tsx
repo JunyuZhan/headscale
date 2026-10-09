@@ -18,6 +18,8 @@ const zh: Record<string, string> = {
   Users: "用户",
   "Pre-auth keys": "预授权密钥",
   "ACL Policy": "访问控制策略",
+  Workspace: "工作区",
+  Administration: "管理",
   "Log out": "退出登录",
   admin: "管理员",
   user: "普通用户",

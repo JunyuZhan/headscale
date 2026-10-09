@@ -1,20 +1,125 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { auth, self, type Me } from "../api/client";
 import { useI18n } from "../i18n";
 
 const baseNav = [
-  { to: "/", key: "Overview", end: true },
-  { to: "/nodes", key: "Nodes", end: false },
-  { to: "/myself", key: "My devices", end: false },
+  { to: "/", key: "Overview", end: true, icon: "overview" },
+  { to: "/nodes", key: "Nodes", end: false, icon: "nodes" },
+  { to: "/myself", key: "My devices", end: false, icon: "devices" },
 ];
 
 const adminNav = [
-  { to: "/users", key: "Users", end: false },
-  { to: "/keys", key: "Pre-auth keys", end: false },
-  { to: "/policy", key: "ACL Policy", end: false },
-  { to: "/invite", key: "Invite device", end: false },
+  { to: "/users", key: "Users", end: false, icon: "users" },
+  { to: "/keys", key: "Pre-auth keys", end: false, icon: "keys" },
+  { to: "/policy", key: "ACL Policy", end: false, icon: "policy" },
+  { to: "/invite", key: "Invite device", end: false, icon: "invite" },
 ];
+
+function Icon({ name, className = "w-5 h-5" }: { name: string; className?: string }) {
+  const paths: Record<string, ReactNode> = {
+    overview: <path d="M3 3h7v7H3zM14 3h7v4h-7zM14 10h7v11h-7zM3 13h7v8H3z" />,
+    nodes: (
+      <>
+        <rect x="3" y="4" width="18" height="5" rx="1.5" />
+        <rect x="3" y="13" width="18" height="7" rx="1.5" />
+        <path d="M7 6.5h.01M7 16.5h.01" />
+      </>
+    ),
+    devices: (
+      <>
+        <rect x="3" y="5" width="13" height="9" rx="1.5" />
+        <path d="M16 9h3v7h-3zM3 20h11" />
+      </>
+    ),
+    users: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3 20v-1a4 4 0 014-4h4a4 4 0 014 4v1" />
+        <path d="M16 11a3 3 0 100-6M21 20v-1a4 4 0 00-3-3.87" />
+      </>
+    ),
+    keys: (
+      <>
+        <circle cx="8" cy="8" r="4" />
+        <path d="M11 11l9 9M17 17l2-2M14 14l2 2" />
+      </>
+    ),
+    policy: (
+      <>
+        <path d="M12 3l8 3v5c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z" />
+        <path d="M9 12l2 2 4-4" />
+      </>
+    ),
+    invite: <path d="M12 5v14M5 12h14" />,
+    logout: (
+      <path d="M16 17l5-5-5-5M21 12H9M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+    ),
+    lock: (
+      <>
+        <rect x="4" y="10" width="16" height="11" rx="2" />
+        <path d="M8 10V7a4 4 0 118 0v3" />
+      </>
+    ),
+    globe: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[name] ?? null}
+    </svg>
+  );
+}
+
+function NavGroup({
+  label,
+  items,
+  t,
+}: {
+  label: string;
+  items: { to: string; key: string; end: boolean; icon: string }[];
+  t: (s: string) => string;
+}) {
+  return (
+    <div className="mb-4">
+      <div className="px-3 mb-1 text-[11px] uppercase tracking-wider text-slate-500 font-medium">
+        {label}
+      </div>
+      <nav className="space-y-0.5">
+        {items.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? "bg-brand-600/15 text-brand-300 border-l-2 border-brand-500"
+                  : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200 border-l-2 border-transparent"
+              }`
+            }
+          >
+            <Icon name={item.icon} className="w-5 h-5" />
+            <span>{t(item.key)}</span>
+          </NavLink>
+        ))}
+      </nav>
+    </div>
+  );
+}
 
 export default function Layout({
   me,
@@ -25,7 +130,8 @@ export default function Layout({
 }) {
   const navigate = useNavigate();
   const { t, lang, setLang } = useI18n();
-  const nav = me.role === "admin" ? [...baseNav, ...adminNav] : baseNav;
+  const isAdmin = me.role === "admin";
+  const initials = (me.username || "?").slice(0, 2).toUpperCase();
 
   const logout = async () => {
     try {
@@ -74,55 +180,69 @@ export default function Layout({
 
   return (
     <div className="flex h-full">
-      <aside className="w-60 shrink-0 bg-slate-900 border-r border-slate-800 p-4 flex flex-col">
-        <div className="text-brand-500 font-bold text-lg mb-6 px-2">
-          Headscale
+      <aside className="w-64 shrink-0 bg-slate-900/95 border-r border-slate-800 flex flex-col">
+        <div className="px-4 pt-5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg flex items-center justify-center font-bold text-white text-lg">
+              H
+            </div>
+            <div>
+              <div className="text-white font-semibold leading-tight">
+                Headscale
+              </div>
+              <div className="text-[11px] text-slate-500">自建 VPN 控制台</div>
+            </div>
+          </div>
         </div>
-        <nav className="flex-1 space-y-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-md text-sm ${
-                  isActive
-                    ? "bg-brand-600 text-white"
-                    : "text-slate-300 hover:bg-slate-800"
-                }`
-              }
-            >
-              {t(item.key)}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="px-2 py-2 text-xs text-slate-500">
-          {me.username} · {t(me.role)}
-          {me.role === "user" && me.headscale_user
-            ? ` · ${me.headscale_user}`
-            : ""}
+
+        <div className="flex-1 overflow-y-auto px-3 pb-3">
+          <NavGroup label={t("Workspace")} items={baseNav} t={t} />
+          {isAdmin && (
+            <NavGroup label={t("Administration")} items={adminNav} t={t} />
+          )}
         </div>
-        <button
-          className="mt-2 px-3 py-2 rounded-md text-sm text-slate-400 hover:bg-slate-800 text-left"
-          onClick={() => setPwOpen(true)}
-        >
-          {t("Change password")}
-        </button>
-        <button
-          className="mt-2 px-3 py-2 rounded-md text-sm text-slate-400 hover:bg-slate-800 text-left"
-          onClick={logout}
-        >
-          {t("Log out")}
-        </button>
+
+        <div className="border-t border-slate-800 p-3">
+          <div className="flex items-center gap-3 px-1 mb-2">
+            <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-semibold text-slate-200">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm text-slate-200 truncate">
+                {me.username}
+              </div>
+              <div className="text-[11px] text-slate-500">
+                {t(me.role)}
+                {me.role === "user" && me.headscale_user
+                  ? ` · ${me.headscale_user}`
+                  : ""}
+              </div>
+            </div>
+          </div>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            onClick={() => setPwOpen(true)}
+          >
+            <Icon name="lock" className="w-4 h-4" />
+            {t("Change password")}
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            onClick={logout}
+          >
+            <Icon name="logout" className="w-4 h-4" />
+            {t("Log out")}
+          </button>
+        </div>
       </aside>
 
       {pwOpen && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => setPwOpen(false)}
         >
           <div
-            className="bg-slate-900 border border-slate-800 rounded-lg p-5 w-80 space-y-3"
+            className="bg-slate-900 border border-slate-800 rounded-xl p-5 w-80 space-y-3 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-white">
@@ -136,26 +256,26 @@ export default function Layout({
                 value={pwOld}
                 onChange={(e) => setPwOld(e.target.value)}
                 placeholder={t("Old password")}
-                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"
               />
               <input
                 type="password"
                 value={pwNew}
                 onChange={(e) => setPwNew(e.target.value)}
                 placeholder={t("New password")}
-                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"
               />
               <input
                 type="password"
                 value={pwConfirm}
                 onChange={(e) => setPwConfirm(e.target.value)}
                 placeholder={t("Confirm password")}
-                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"
               />
               <button
                 type="submit"
                 disabled={pwBusy}
-                className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-md text-sm font-medium disabled:opacity-50"
+                className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
               >
                 {pwBusy ? t("Loading…") : t("Change password")}
               </button>
@@ -163,17 +283,24 @@ export default function Layout({
           </div>
         </div>
       )}
-      <main className="flex-1 overflow-auto p-6">
-        <div className="flex items-center justify-end mb-4">
+
+      <main className="flex-1 overflow-auto">
+        <div className="sticky top-0 z-10 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 py-3 flex items-center justify-between">
+          <div className="text-sm text-slate-400">
+            {t(me.role === "admin" ? "Administration" : "Workspace")}
+          </div>
           <button
             onClick={() => setLang(lang === "zh" ? "en" : "zh")}
-            className="text-xs text-slate-400 border border-slate-700 rounded px-2 py-1 hover:bg-slate-800"
+            className="flex items-center gap-1.5 text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
             title="Language / 语言"
           >
+            <Icon name="globe" className="w-4 h-4" />
             {lang === "zh" ? "EN" : "中文"}
           </button>
         </div>
-        <Outlet context={me} />
+        <div className="p-6">
+          <Outlet context={me} />
+        </div>
       </main>
     </div>
   );

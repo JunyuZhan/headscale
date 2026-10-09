@@ -27,20 +27,25 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <div className="min-h-full flex items-center justify-center">
+    <div className="auth-bg min-h-full flex items-center justify-center p-6">
       <form
         onSubmit={submit}
-        className="w-96 bg-slate-900 border border-slate-800 rounded-lg p-6 space-y-4"
+        className="w-[380px] bg-slate-900/90 backdrop-blur border border-slate-800 rounded-2xl p-7 space-y-5 shadow-2xl"
       >
-        <h1 className="text-xl font-semibold text-white">Headscale · Web UI</h1>
-        <p className="text-sm text-slate-400">
-          使用管理员分配的账号登录。首次部署请用环境变量{" "}
-          <code className="text-brand-500">WEBUI_BOOTSTRAP_ADMIN</code> 创建管理员。
-        </p>
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg flex items-center justify-center font-bold text-white text-xl">
+            H
+          </div>
+          <h1 className="text-xl font-semibold text-white">Headscale · Web UI</h1>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            使用管理员分配的账号登录。首次部署请用环境变量{" "}
+            <code className="text-brand-400">WEBUI_BOOTSTRAP_ADMIN</code> 创建管理员。
+          </p>
+        </div>
         <div className="space-y-1">
           <label className="text-sm text-slate-300">用户名</label>
           <input
-            className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200"
+            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
@@ -50,7 +55,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           <label className="text-sm text-slate-300">密码</label>
           <input
             type="password"
-            className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200"
+            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-200"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -59,7 +64,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-md text-sm font-medium disabled:opacity-50"
+          className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
         >
           {busy ? t("Signing in…") : t("Sign in")}
         </button>
