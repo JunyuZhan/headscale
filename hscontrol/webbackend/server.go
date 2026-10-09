@@ -588,11 +588,13 @@ func proxyAllowed(method, rest string) bool {
 			rest == "/user" || strings.HasPrefix(rest, "/user/") ||
 			rest == "/preauthkey" || rest == "/policy"
 	case http.MethodPost:
-		return rest == "/preauthkey" || rest == "/preauthkey/expire" || rest == "/policy/check"
+		return rest == "/preauthkey" || rest == "/preauthkey/expire" || rest == "/policy/check" ||
+			strings.HasPrefix(rest, "/node/")
 	case http.MethodPut:
 		return rest == "/policy"
 	case http.MethodDelete:
-		return rest == "/preauthkey" || strings.HasPrefix(rest, "/user/")
+		return rest == "/preauthkey" || strings.HasPrefix(rest, "/user/") ||
+			strings.HasPrefix(rest, "/node/")
 	}
 	return false
 }
@@ -648,6 +650,10 @@ func (s *Server) preprocessProxy(r *http.Request, rest, hsUser string, isAdmin b
 		r.URL.RawQuery = appendUserFilter(r.URL.RawQuery, hsUser)
 	case r.Method == http.MethodGet && rest == "/preauthkey":
 		r.URL.RawQuery = appendUserFilter(r.URL.RawQuery, hsUser)
+	case r.Method == http.MethodPost && strings.HasPrefix(rest, "/node/"):
+		return errors.New("forbidden: node changes require admin")
+	case r.Method == http.MethodDelete && strings.HasPrefix(rest, "/node/"):
+		return errors.New("forbidden: node deletion requires admin")
 	case rest == "/policy":
 		return errors.New("forbidden: policy requires admin")
 	}
