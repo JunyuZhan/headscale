@@ -853,8 +853,8 @@ func joinCommands(serverURL, key, hostname string) map[string]string {
 		up += " --hostname " + hostname
 	}
 	linuxMac := "curl -fsSL https://tailscale.com/install.sh | sh && sudo " + up
-	windows := "powershell -Command \"Invoke-WebRequest -Uri https://pkgs.tailscale.com/stable/tailscale-ipn.msi -OutFile $env:TEMP\\tailscale.msi; " +
-		"Start-Process msiexec -ArgumentList '/i',$env:TEMP\\tailscale.msi,'/quiet' -Wait; " +
+	windows := "powershell -Command \"Invoke-WebRequest -Uri https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile $env:TEMP\\tailscale-setup.exe; " +
+		"Start-Process -Wait -FilePath $env:TEMP\\tailscale-setup.exe -ArgumentList '/S'; " +
 		"& 'C:\\Program Files\\Tailscale\\tailscale.exe' " + up + "\""
 	return map[string]string{
 		"linux_macos": linuxMac,
