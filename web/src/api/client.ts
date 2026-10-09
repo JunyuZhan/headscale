@@ -38,7 +38,7 @@ export interface Node {
 export interface PreAuthKey {
   id: string;
   key?: string;
-  user?: string;
+  user?: User | string;
   reusable?: boolean;
   ephemeral?: boolean;
   expiration?: string;

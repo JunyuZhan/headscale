@@ -158,7 +158,11 @@ export default function PreAuthKeys() {
                 <td className="p-3 text-slate-200 font-mono text-xs">
                   {k.id}
                 </td>
-                <td className="p-3 text-slate-400">{k.user ?? "—"}</td>
+                <td className="p-3 text-slate-400">
+                  {typeof k.user === "string"
+                    ? k.user || "—"
+                    : (k.user?.name ?? "—")}
+                </td>
                 <td className="p-3 text-slate-400">
                   {k.reusable ? t("yes") : t("no")}
                 </td>
