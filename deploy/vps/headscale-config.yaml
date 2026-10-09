@@ -1,0 +1,56 @@
+# Headscale config for the VPS deployment (headscale-web:local fork).
+#   - server_url is the public HTTPS endpoint (TLS terminated by host nginx).
+#   - listen_addr is 0.0.0.0 inside the container; host only publishes 127.0.0.1:18080.
+#   - TLS/ACME disabled here; host nginx holds the Let's Encrypt cert.
+#   - policy.mode: database so the web UI can edit ACLs online.
+#   - NOTE: this headscale fork uses `database:` (not `db:`) and requires
+#     `noise.private_key_path`. `base_domain` must differ from `server_url`.
+#   - DERP map: uses Tailscale's public map endpoint (correct URL). For fully
+#     offline startup, cache the map locally and use `derp.paths` instead
+#     (see README "Offline DERP map").
+
+server_url: "https://hs.sclink.dev"
+listen_addr: "0.0.0.0:8080"
+metrics_listen_addr: "0.0.0.0:9090"
+
+prefixes:
+  v4: "100.64.0.0/10"
+  v6: "fd7a:115c:a1e0::/48"
+
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/headscale.db
+    write_ahead_log: true
+
+dns:
+  magic_dns: true
+  # Must NOT equal server_url. Used only for MagicDNS hostnames inside the tailnet.
+  base_domain: hsnet.sclink.dev
+  override_local_dns: false
+  nameservers:
+    global:
+      - 1.1.1.1
+      - 8.8.8.8
+
+derp:
+  server:
+    enabled: false
+  urls:
+    # Correct Tailscale global DERP map endpoint (NOT derp.tailscale.com/derp.json,
+    # which returns an HTML page and breaks startup).
+    - https://controlplane.tailscale.com/derpmap/default
+  auto_update_enabled: true
+  update_frequency: 24h
+
+policy:
+  mode: database
+
+log:
+  level: info
+
+tls_letsencrypt:
+  enabled: false
