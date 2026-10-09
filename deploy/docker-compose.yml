@@ -1,0 +1,60 @@
+# One-entry-point deployment: Caddy (HTTPS) fronts both headscale and the web
+# backend. The browser only ever talks to the public domain; the Headscale API
+# key lives exclusively inside the web backend container.
+
+services:
+  headscale:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["headscale", "serve"]
+    environment:
+      # headscale reads its config from this file (see headscale-config.yaml).
+      HEADSCALE_CONFIG: /etc/headscale/config.yaml
+    volumes:
+      - ./headscale-config.yaml:/etc/headscale/config.yaml:ro
+      - hs_data:/var/lib/headscale
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  webbackend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: ["webbackend"]
+    environment:
+      WEBUI_LISTEN: ":8090"
+      HEADSCALE_URL: "http://headscale:8080"
+      HEADSCALE_API_KEY: "${HEADSCALE_API_KEY}"
+      WEBUI_DB: "/var/lib/webui/webui.db"
+      WEBUI_COOKIE_SECURE: "true"      # behind HTTPS -> secure cookie
+      WEBUI_BOOTSTRAP_ADMIN: "${WEBUI_BOOTSTRAP_ADMIN}"   # "user:pass" first run
+      HEADSCALE_PUBLIC_URL: "https://${DOMAIN}"
+    volumes:
+      - webui_data:/var/lib/webui
+    expose:
+      - "8090"
+    depends_on:
+      - headscale
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - headscale
+      - webbackend
+    restart: unless-stopped
+
+volumes:
+  hs_data:
+  webui_data:
+  caddy_data:
+  caddy_config:

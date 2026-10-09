@@ -1,0 +1,40 @@
+# Headscale configuration for the Docker Compose deployment.
+# IMPORTANT: replace vpn.example.com below with YOUR real domain (three places:
+# server_url here, DOMAIN in docker-compose.yml + Caddyfile + .env).
+#
+# Key points vs the stock example:
+#   - listen_addr is 0.0.0.0 so Caddy can reach it inside the compose network.
+#   - policy.mode: database so the web UI can edit ACLs.
+#   - TLS is terminated by Caddy, so headscale's own TLS is disabled.
+
+server_url: "https://vpn.example.com"
+listen_addr: "0.0.0.0:8080"
+metrics_listen_addr: "0.0.0.0:9090"
+
+# Node IP ranges (Tailscale CGNAT + ULA). Do not change unless you know why.
+prefixes:
+  v4: "100.64.0.0/10"
+  v6: "fd7a:115c:a1e0::/48"
+
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://derp.tailscale.com/derp.json
+  auto_update_enabled: true
+  update_frequency: 24h
+
+db:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/headscale.db
+
+policy:
+  mode: database
+
+log:
+  level: info
+
+# TLS terminated by Caddy; keep headscale's own ACME disabled.
+tls_letsencrypt:
+  enabled: false

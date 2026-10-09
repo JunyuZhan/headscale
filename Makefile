@@ -35,9 +35,20 @@ check-deps:
 	$(call check_tool,mdformat)
 	$(call check_tool,prettier)
 
+# Build the embedded web UI (React SPA under web/) into hscontrol/webui/dist.
+# If npm is unavailable the binary still builds and serves a placeholder page.
+.PHONY: web
+web:
+	@if command -v npm >/dev/null 2>&1; then \
+		echo "Building web UI..."; \
+		cd web && npm install && npm run build; \
+	else \
+		echo "Warning: npm not found, skipping web UI build (the binary will serve a placeholder)."; \
+	fi
+
 # Build targets
 .PHONY: build
-build: check-deps $(GO_SOURCES) go.mod go.sum
+build: check-deps $(GO_SOURCES) go.mod go.sum web
 	@echo "Building headscale..."
 	go build $(PIE_FLAGS) -ldflags "-X main.version=$(VERSION)" -o headscale ./cmd/headscale
 
@@ -110,7 +121,7 @@ client:
 # Clean targets
 .PHONY: clean
 clean:
-	rm -rf headscale gen/client
+	rm -rf headscale gen/client web/node_modules
 
 # Development workflow
 .PHONY: dev

@@ -58,3 +58,19 @@ __debug_bin
 node_modules/
 package-lock.json
 package.json
+
+# Embedded web UI (React SPA under hscontrol/webui/dist): keep the committed
+# placeholder so `go build` always resolves the embed; ignore build output.
+!hscontrol/webui/dist/
+hscontrol/webui/dist/*
+!hscontrol/webui/dist/.gitkeep
+
+# Frontend project sources under web/ are committed (node_modules is ignored above)
+!web/package.json
+!web/package-lock.json
+
+# Web backend build artifact (built via `go build ./cmd/webbackend`)
+/webbackend
+
+# WorkBuddy project memory / tooling data — not part of headscale source
+.workbuddy/

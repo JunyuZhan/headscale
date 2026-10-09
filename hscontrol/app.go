@@ -43,6 +43,7 @@ import (
 	"github.com/juanfont/headscale/hscontrol/types"
 	"github.com/juanfont/headscale/hscontrol/types/change"
 	"github.com/juanfont/headscale/hscontrol/util"
+	"github.com/juanfont/headscale/hscontrol/webui"
 	"github.com/pkg/profile"
 	"github.com/rs/zerolog/log"
 	"github.com/sasha-s/go-deadlock"
@@ -531,7 +532,9 @@ func (h *Headscale) createRouter(apiV1Mux, apiV2Mux http.Handler) *chi.Mux {
 	r.Head("/machine/ping-response", h.PingResponseHandler)
 
 	r.Get("/favicon.ico", FaviconHandler)
-	r.Get("/", BlankHandler)
+	// Embedded web UI (React SPA, served by headscale itself under /ui).
+	r.Get("/ui", webui.RedirectToUI)
+	r.Handle("/ui/*", webui.Handler())
 
 	return r
 }

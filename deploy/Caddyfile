@@ -1,0 +1,20 @@
+# Caddy auto-obtains and renews TLS for ${DOMAIN} (set in .env / environment).
+# Single public entry: the browser only ever sees this domain.
+#
+# Routing:
+#   /ui/api/*  -> web backend  (auth + proxy to Headscale, holds the API key)
+#   everything else -> headscale (serves the static SPA at /ui and its API /api)
+
+{$DOMAIN} {
+	# Web backend: auth + Headscale proxy. Prefix is preserved so the backend
+	# receives the full /ui/api/... path.
+	@webuiAPI path /ui/api/*
+	handle @webuiAPI {
+		reverse_proxy webbackend:8090
+	}
+
+	# Everything else (SPA at /ui, Headscale API at /api, device handshake) -> headscale.
+	handle {
+		reverse_proxy headscale:8080
+	}
+}
