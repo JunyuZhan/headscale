@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { api, self, type User } from "../api/client";
+import { api, admin, self, type User, type Invite } from "../api/client";
 import { useI18n } from "../i18n";
 
 interface KeyResult {
@@ -10,10 +10,17 @@ interface KeyResult {
   expiration_hours: number;
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  unused: "未使用",
+  used: "已使用",
+  expired: "已过期",
+  revoked: "已吊销",
+};
+
 // Invite device: admin generates a Pre-Auth Key for a chosen Headscale user and
 // gets a single-line command (install + join) to hand to a colleague. The
 // colleague runs it, the device auto-joins, and the admin can revoke it anytime
-// from the Nodes page.
+// from the Nodes page. Every issuance is recorded in a traceable ledger.
 export default function Invite() {
   const { t } = useI18n();
 
@@ -22,9 +29,22 @@ export default function Invite() {
   const [reusable, setReusable] = useState(false);
   const [ephemeral, setEphemeral] = useState(false);
   const [hours, setHours] = useState(24);
+  const [applicant, setApplicant] = useState("");
+  const [deviceDesc, setDeviceDesc] = useState("");
+  const [org, setOrg] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<KeyResult | null>(null);
+
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const loadInvites = () => {
+    admin
+      .listInvites()
+      .then(setInvites)
+      .catch(() => {
+        /* ledger is admin-only; ignore on error */
+      });
+  };
 
   useEffect(() => {
     setError("");
@@ -35,6 +55,7 @@ export default function Invite() {
         setTargetUser((prev) => prev || r.users?.[0]?.name || "");
       })
       .catch((e) => setError((e as Error).message));
+    loadInvites();
   }, []);
 
   const generate = async (e: FormEvent) => {
@@ -47,8 +68,17 @@ export default function Invite() {
     }
     setBusy(true);
     try {
-      const r = await self.createKey(reusable, ephemeral, hours, targetUser);
+      const r = await self.createKey(
+        reusable,
+        ephemeral,
+        hours,
+        targetUser,
+        applicant,
+        deviceDesc,
+        org,
+      );
       setResult(r);
+      loadInvites();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -96,6 +126,45 @@ export default function Invite() {
             </option>
           ))}
         </select>
+
+        <div className="grid grid-cols-1 gap-3 pt-1">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              {t("Applicant")}
+            </label>
+            <input
+              value={applicant}
+              onChange={(e) => setApplicant(e.target.value)}
+              placeholder={t("Applicant")}
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              {t("Device description")}
+            </label>
+            <input
+              value={deviceDesc}
+              onChange={(e) => setDeviceDesc(e.target.value)}
+              placeholder={t("Device description")}
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              {t("Used as node hostname; ASCII only, e.g. zhangsan-laptop")}
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              {t("Organization")}
+            </label>
+            <input
+              value={org}
+              onChange={(e) => setOrg(e.target.value)}
+              placeholder={t("Organization")}
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+            />
+          </div>
+        </div>
 
         <form onSubmit={generate} className="space-y-3 pt-2">
           <p className="text-xs text-slate-400">
@@ -217,6 +286,50 @@ export default function Invite() {
           </p>
         </div>
       )}
+
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-slate-200 mb-3">
+          {t("Invitation ledger")}
+        </h3>
+        {invites.length === 0 ? (
+          <div className="text-sm text-slate-500">{t("No invitations yet.")}</div>
+        ) : (
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="text-slate-400">
+                <tr className="text-left">
+                  <th className="py-1 pr-3">{t("Applicant")}</th>
+                  <th className="py-1 pr-3">{t("Device")}</th>
+                  <th className="py-1 pr-3">{t("Organization")}</th>
+                  <th className="py-1 pr-3">{t("Node name")}</th>
+                  <th className="py-1 pr-3">{t("Target user")}</th>
+                  <th className="py-1 pr-3">{t("By")}</th>
+                  <th className="py-1 pr-3">{t("Expires")}</th>
+                  <th className="py-1">{t("Status")}</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-300">
+                {invites.map((inv) => (
+                  <tr key={inv.id} className="border-t border-slate-800">
+                    <td className="py-1 pr-3">{inv.applicant || "—"}</td>
+                    <td className="py-1 pr-3">{inv.device_desc || "—"}</td>
+                    <td className="py-1 pr-3">{inv.org || "—"}</td>
+                    <td className="py-1 pr-3">{inv.hostname || "—"}</td>
+                    <td className="py-1 pr-3">{inv.target_user}</td>
+                    <td className="py-1 pr-3">{inv.created_by}</td>
+                    <td className="py-1 pr-3">
+                      {inv.expires_at.slice(0, 19).replace("T", " ")}
+                    </td>
+                    <td className="py-1">
+                      {t(STATUS_LABEL[inv.status] ?? inv.status)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

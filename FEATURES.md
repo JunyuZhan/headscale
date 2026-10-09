@@ -68,12 +68,13 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 | `97097506` | **中文化 + 语言切换**：新增 `i18n.tsx`（英文作 key 的 zh 覆盖、缺失回退英文），默认中文，右上角「中/EN」切换，localStorage 持久化；9 个页面/组件接入 `t()`。 |
 | `bd65eb83` | **admin 自助服务修复**：admin 生成密钥原被 403，改为必须选择目标 Headscale 用户；**空策略 500 归一化**：Headscale 无 ACL 时 `GET /policy` 返回 500，代理层归一化为 `200 {"policy":""}`，并写入 allow-all 策略从源头消除报错。 |
 | `e3e90bfd` | **PreAuthKey 渲染崩溃修复**：该 Headscale 版本返回的 `user` 是完整 User 对象而非字符串，表格直接渲染导致 React #31 崩溃；改为取 `.name` 并放宽类型。 |
-| 本次新增 | **邀请设备（admin）+ 限制性 ACL + 吊销**：新增 `web/src/pages/Invite.tsx`（admin 选目标 Headscale 用户生成 PreAuthKey，返回含自动安装步骤的全平台命令，可复制 / 下载 `.sh` `.ps1` 脚本）；后端 `joinCommands` 增强为「安装 + join」一行命令（Linux/macOS：`curl … install.sh \| sh && sudo tailscale up …`；Windows：msi 安装 + up）；`Nodes` 页「删除」改为「吊销设备」并加二次确认；服务端写入**限制性 ACL**（默认 deny，仅放行 `internal-net = 192.168.50.0/24`），实现成员彼此隔离、只能访问内网子网。 |
+| 本次新增 | **邀请设备（admin）+ 限制性 ACL + 吊销**：新增 `web/src/pages/Invite.tsx`（admin 选目标 Headscale 用户生成 PreAuthKey，返回含自动安装步骤的全平台命令，可复制 / 下载 `.sh` `.ps1` 脚本）；后端 `joinCommands` 增强为「安装 + join」一行命令；`Nodes` 页「删除」改为「吊销设备」并加二次确认；服务端写入限制**子网** ACL（默认 deny，仅放行 `internal-net = 192.168.50.0/24`）。 |
+| 本次新增（v2） | **邀请台账 + 节点归属 + 自助改密码 + ACL 预设切换**：① 新增 `Invite` 模型与 `POST /ui/api/admin/invites` 列表接口，邀请设备时填写**申请人 / 设备描述 / 单位**，后台留存可查列表（谁、什么设备、单位、状态、过期时间）；② `joinCommands` 注入 `--hostname`（用设备描述），连入后节点名即设备名，`Nodes` 页可识别归属；③ 新增 `POST /ui/api/me/password`（自助改密码）+ `POST /ui/api/admin/webusers/:id/password`（admin 重置），前端 Layout 用户菜单加「修改密码」弹窗；④ ACL 改为 **tag 驱动、后台可切换预设**（成员隔离：仅放行 → `tag:server`；成员互访：全互通），不再写死任何物理子网。 |
 
 ### 部署侧（实现的一部分）
 - VPS（`156.225.20.242`）真机上线：`headscale-web:local` 镜像，host nginx 做 TLS 终止 + 反代（`/ui/api/*` → 18090，`/` → 302 → `/ui/`，其余 → 18080）。
 - 修复多处原始部署配置错误（config 键名 `database:`、缺 `dns:` / `noise`、`DERP` 地图地址、根路径跳转、certbot 选项文件）。
-- 加 `autoApprovers.routes: [192.168.50.0/24]`，内网子网路由入网即自动批准。
+- **纯节点方案**：内网服务器自身装 Tailscale 客户端加入 VPN、打 `tag:server` 暴露，已**移除 `autoApprovers`**（不再靠子网路由宣告整个 /24）；ACL 改为 tag 预设，初始默认「成员隔离」。
 
 ---
 
@@ -89,9 +90,9 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 
 ## 五、功能规划与优先级（用户决策，2026-10-09）
 
-- **Subnet Router 落地 + 成员隔离**：✅ 已完成。token 命令一键入网（无需每人建账号）+ 限制性 ACL（成员互不可达，仅可访问 `192.168.50.0/24`）+ 后台可随时吊销；不做"逐个审批门"。详见 `PLAN-设备入网与隔离.md`。
-- **移动端描述文件**：Subnet Router 完成后补（iOS `.mobileconfig` + Android 指引）。
-- **子网路由 Web 批准**：值得做，但不紧急（当前靠 `autoApprovers`）。
+- **设备入网与访问控制（v2）**：✅ 已完成并上线。token 命令一键入网（无需每人建账号）+ **ACL tag 驱动可切换预设**（成员隔离 / 成员互访）+ **邀请台账**（申请人 / 设备 / 单位可查）+ **节点归属 hostname** + 后台可随时**吊销** + **自助改密码**。不做"逐个审批门"。详见 `PLAN-设备入网与隔离.md`。
+- **纯节点方案**：内网服务器作为节点（`tag:server`）加入 VPN，不再用子网路由宣告整个 /24；debian10 不再当 subnet router（已移除 `autoApprovers`）。
+- **移动端描述文件**：设备入网稳定后补（iOS `.mobileconfig` + Android 指引）。
 - **Exit Node 开关**：有人提需求再做（on-demand）。
 - **节点审批**：已决定**不做**（采用 token 自动入网）。
 - **DNS / DERP / OIDC 配置界面**：继续暂缓。

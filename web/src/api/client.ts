@@ -46,6 +46,20 @@ export interface PreAuthKey {
   aclTags?: string[];
 }
 
+export interface Invite {
+  id: number;
+  applicant: string;
+  device_desc: string;
+  org: string;
+  target_user: string;
+  key_prefix: string;
+  hostname: string;
+  created_by: string;
+  created_at: string;
+  expires_at: string;
+  status: string;
+}
+
 export interface Policy {
   policy: string;
   updatedAt?: string;
@@ -143,6 +157,9 @@ export const self = {
     ephemeral: boolean,
     expiration_hours: number,
     headscale_user?: string,
+    applicant?: string,
+    device_desc?: string,
+    org?: string,
   ) =>
     backendFetch<{
       key: string;
@@ -152,7 +169,20 @@ export const self = {
       expiration_hours: number;
     }>("/me/preauthkey", {
       method: "POST",
-      body: JSON.stringify({ reusable, ephemeral, expiration_hours, headscale_user }),
+      body: JSON.stringify({
+        reusable,
+        ephemeral,
+        expiration_hours,
+        headscale_user,
+        applicant,
+        device_desc,
+        org,
+      }),
+    }),
+  changePassword: (oldP: string, newP: string) =>
+    backendFetch<{ ok: boolean }>("/me/password", {
+      method: "POST",
+      body: JSON.stringify({ old: oldP, new: newP }),
     }),
 };
 
@@ -219,4 +249,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ policy }),
     }),
+};
+
+// Web-backend admin-only endpoints (require the session cookie + admin role).
+export const admin = {
+  listInvites: () => backendFetch<Invite[]>("/admin/invites"),
 };

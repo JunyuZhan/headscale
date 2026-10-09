@@ -3,31 +3,37 @@ import { api } from "../api/client";
 import { useI18n } from "../i18n";
 
 const DEFAULT_POLICY = `{
-  // Groups define sets of users or devices.
-  "groups": {
-    "group:admins": ["demo"]
-  },
-
-  // Hosts let you alias IPs or CIDRs to a name.
-  "hosts": {
-    "internal-net": "10.0.0.0/24"
-  },
-
-  // Tag owners control which users may assign a tag.
+  // 默认拒绝一切流量（Tailscale ACL 默认即 deny-all）。
+  // 仅放行：任意节点 → tag:server（内网服务器节点）。成员之间互不可达。
+  // 内网服务器节点加入后，由管理员打上 tag:server 才会生效。
   "tagOwners": {
-    "tag:server": ["group:admins"]
+    "tag:server": ["owner@hsnet.sclink.dev"]
   },
-
-  // ACLs grant access between sources and destinations.
   "acls": [
     {
       "action": "accept",
       "src": ["*"],
-      "dst": ["*:*"]
+      "dst": ["tag:server:*"]
     }
   ]
 }
 `;
+
+// Two switchable presets. The network is a single tailnet with ONE global
+// policy, but tags let us scope it per device, so "global" does not mean
+// "can't be granular". These presets are applied via the same save path.
+const PRESET_ISOLATED = `{
+  // 成员隔离：仅放行 成员 → tag:server（内网服务器节点）；成员之间互不可达。
+  // 内网服务器节点加入后，由管理员在「节点」页打上 tag:server 才会生效。
+  "tagOwners": { "tag:server": ["owner@hsnet.sclink.dev"] },
+  "acls": [ { "action": "accept", "src": ["*"], "dst": ["tag:server:*"] } ]
+}`;
+
+const PRESET_MESH = `{
+  // 成员互访：成员之间可互通，且都能访问 tag:server（内网服务器节点）。
+  "tagOwners": { "tag:server": ["owner@hsnet.sclink.dev"], "tag:client": ["owner@hsnet.sclink.dev"] },
+  "acls": [ { "action": "accept", "src": ["*"], "dst": ["*:*"] } ]
+}`;
 
 // parseHuJSON removes // and /* */ comments (while respecting strings) and
 // trailing commas, then JSON-parses the result.
@@ -141,6 +147,22 @@ export default function Policy() {
     }
   };
 
+  const applyPreset = async (preset: string, label: string) => {
+    setError("");
+    setMsg("");
+    setBusy(true);
+    try {
+      await api.setPolicy(preset);
+      setText(preset);
+      setExists(true);
+      setMsg(`${label} 已应用并保存。`);
+    } catch (e) {
+      setError(`${t("Save")}失败: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const addRule = () => {
     const obj = parseHuJSON(text) ?? {};
     const acls = Array.isArray(obj.acls) ? (obj.acls as unknown[]) : [];
@@ -185,6 +207,20 @@ export default function Policy() {
             className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Save")}
+          </button>
+          <button
+            onClick={() => applyPreset(PRESET_ISOLATED, t("Isolated mode"))}
+            disabled={busy}
+            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+          >
+            {t("Isolated mode")}
+          </button>
+          <button
+            onClick={() => applyPreset(PRESET_MESH, t("Mesh mode"))}
+            disabled={busy}
+            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+          >
+            {t("Mesh mode")}
           </button>
         </div>
       </div>

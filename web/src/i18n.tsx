@@ -100,6 +100,8 @@ const zh: Record<string, string> = {
     "尚未存储策略，保存将创建一条。",
   "Quick add rule": "快速添加规则",
   Add: "添加",
+  "Isolated mode": "成员隔离",
+  "Mesh mode": "成员互访",
   "— none —": "— 无 —",
 
   // Invite device
@@ -119,6 +121,31 @@ const zh: Record<string, string> = {
   "Revoke device": "吊销设备",
   "Revoke node": "吊销节点",
   "Target user is required": "请选择目标用户",
+
+  // Invite ledger
+  "Applicant": "申请人",
+  "Device description": "设备描述",
+  "Organization": "单位",
+  "Used as node hostname; ASCII only, e.g. zhangsan-laptop":
+    "作为节点名（仅 ASCII，例如 zhangsan-laptop）",
+  "Invitation ledger": "邀请台账",
+  "No invitations yet.": "暂无邀请记录。",
+  "Device": "设备",
+  "Node name": "节点名",
+  "By": "生成人",
+  "Expires": "过期时间",
+  "未使用": "未使用",
+  "已使用": "已使用",
+  "已过期": "已过期",
+  "已吊销": "已吊销",
+
+  // Change password
+  "Change password": "修改密码",
+  "Old password": "原密码",
+  "New password": "新密码",
+  "Confirm password": "确认新密码",
+  "Password changed": "密码已修改",
+  "Change password failed": "修改密码失败",
 };
 
 const STORAGE_KEY = "hs_lang";

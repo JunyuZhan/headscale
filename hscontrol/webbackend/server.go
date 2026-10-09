@@ -59,6 +59,24 @@ type Session struct {
 	CreatedAt time.Time `json:"-"`
 }
 
+// Invite is a ledger record of a Pre-Auth Key handed out via the web console.
+// Headscale's PreAuthKey itself carries no descriptive metadata (no applicant,
+// device or org), so we keep our own traceability record: who it was given to,
+// what device, which org, and whether it has been used / expired / revoked.
+type Invite struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Applicant    string    `json:"applicant"`     // 申请人
+	DeviceDesc   string    `json:"device_desc"`   // 设备描述
+	Org          string    `json:"org"`           // 单位
+	TargetUser   string    `json:"target_user"`   // 目标 Headscale 用户
+	KeyPrefix    string    `json:"key_prefix"`    // 密钥前缀（仅用于辨识）
+	Hostname     string    `json:"hostname"`      // 写入 tailscale up --hostname
+	CreatedBy    string    `json:"created_by"`    // 谁生成的
+	CreatedAt    time.Time `json:"created_at"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	Status       string    `json:"status"` // unused | used | expired | revoked
+}
+
 type Config struct {
 	Listen           string
 	HeadscaleURL     string
@@ -108,7 +126,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening web db: %w", err)
 	}
-	if err := gormDB.AutoMigrate(&WebUser{}, &Session{}); err != nil {
+	if err := gormDB.AutoMigrate(&WebUser{}, &Session{}, &Invite{}); err != nil {
 		return nil, fmt.Errorf("migrating web db: %w", err)
 	}
 
@@ -173,11 +191,19 @@ func (s *Server) Handler() http.Handler {
 			rt.Get("/", s.handleListWebUsers)
 			rt.Post("/", s.handleCreateWebUser)
 			rt.Delete("/{id}", s.handleDeleteWebUser)
+			rt.Post("/{id}/password", s.handleResetPassword)
+		})
+
+		// Admin-only invite ledger (traceability of handed-out keys).
+		protected.Route("/ui/api/admin/invites", func(rt chi.Router) {
+			rt.Use(middlewareOf(s.requireAdmin))
+			rt.Get("/", s.handleListInvites)
 		})
 
 		// Self-service: the logged-in user's own devices + key generation.
 		protected.Get("/ui/api/me", s.handleSelf)
 		protected.Post("/ui/api/me/preauthkey", s.handleCreateSelfKey)
+		protected.Post("/ui/api/me/password", s.handleChangePassword)
 
 		// Generic proxy to Headscale /api/v1 with role-based scoping.
 		protected.Handle("/ui/api/proxy/*", s.handleProxy())
@@ -386,6 +412,74 @@ func (s *Server) handleDeleteWebUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// handleChangePassword lets the logged-in web user change their own password.
+func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
+	u := userFromContext(r.Context())
+	var body struct {
+		Old string `json:"old"`
+		New string `json:"new"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "bad request")
+		return
+	}
+	if len(body.New) < 6 {
+		writeError(w, http.StatusBadRequest, "新密码至少 6 位")
+		return
+	}
+	var dbu WebUser
+	if err := s.db.First(&dbu, u.ID).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "user error")
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(dbu.PasswordHash), []byte(body.Old)); err != nil {
+		writeError(w, http.StatusUnauthorized, "原密码错误")
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.New), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "hash error")
+		return
+	}
+	if err := s.db.Model(&dbu).Update("password_hash", string(hash)).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "update error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleResetPassword lets an admin reset another web user's password.
+func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var body struct {
+		New string `json:"new"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.New) < 6 {
+		writeError(w, http.StatusBadRequest, "新密码至少 6 位")
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.New), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "hash error")
+		return
+	}
+	if err := s.db.Model(&WebUser{}).Where("id = ?", id).Update("password_hash", string(hash)).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "update error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleListInvites returns the full invitation ledger (admin only).
+func (s *Server) handleListInvites(w http.ResponseWriter, r *http.Request) {
+	var invites []Invite
+	if err := s.db.Order("id desc").Find(&invites).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	writeJSON(w, http.StatusOK, invites)
+}
+
 // ---- self-service ---------------------------------------------------------
 
 // handleSelf returns the web user's Headscale user and that user's nodes.
@@ -409,6 +503,8 @@ func (s *Server) handleSelf(w http.ResponseWriter, r *http.Request) {
 
 // handleCreateSelfKey generates a Pre-Auth Key for the web user's Headscale
 // user and returns it together with ready-to-use join commands / config.
+// It also writes an Invite ledger record (applicant / device / org) so admins
+// can later trace who each handed-out key was given to.
 func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 	u := userFromContext(r.Context())
 	var body struct {
@@ -416,6 +512,9 @@ func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 		Ephemeral       bool   `json:"ephemeral"`
 		ExpirationHours int    `json:"expiration_hours"`
 		HeadscaleUser   string `json:"headscale_user"` // admin picks a target user
+		Applicant       string `json:"applicant"`      // 申请人
+		DeviceDesc      string `json:"device_desc"`    // 设备描述
+		Org             string `json:"org"`            // 单位
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ExpirationHours <= 0 || body.ExpirationHours > 24*30 {
@@ -442,6 +541,23 @@ func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hostname := sanitizeHostname(body.DeviceDesc)
+	// Record the invitation in our own ledger for traceability.
+	if err := s.db.Create(&Invite{
+		Applicant:    body.Applicant,
+		DeviceDesc:   body.DeviceDesc,
+		Org:          body.Org,
+		TargetUser:   target,
+		KeyPrefix:    shorten(key, 16),
+		Hostname:     hostname,
+		CreatedBy:    u.Username,
+		ExpiresAt:    time.Now().Add(time.Duration(body.ExpirationHours) * time.Hour),
+		Status:       "unused",
+	}).Error; err != nil {
+		// Non-fatal: the key was created; ledger is best-effort.
+		log.Printf("webbackend: failed to record invite ledger: %v", err)
+	}
+
 	serverURL := s.cfg.ServerURL
 	if serverURL == "" {
 		serverURL = s.cfg.HeadscaleURL
@@ -451,7 +567,7 @@ func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 		"key":              key,
 		"server_url":       serverURL,
 		"headscale_user":   u.HeadscaleUser,
-		"commands":         joinCommands(serverURL, key),
+		"commands":         joinCommands(serverURL, key, hostname),
 		"expiration_hours": body.ExpirationHours,
 	})
 }
@@ -696,8 +812,13 @@ func (s *Server) createPreAuthKey(hsUser string, reusable, ephemeral bool, expHo
 // Each command bundles the client install step so a colleague can run a single
 // line to download Tailscale AND auto-join this control server: no web login and
 // no manual config import are needed — the authkey + login-server ARE the config.
-func joinCommands(serverURL, key string) map[string]string {
+// When hostname is non-empty it is injected as --hostname so the device shows up
+// in the node list under a recognizable name (device ownership at a glance).
+func joinCommands(serverURL, key, hostname string) map[string]string {
 	up := fmt.Sprintf("tailscale up --login-server %s --authkey %s", serverURL, key)
+	if hostname != "" {
+		up += " --hostname " + hostname
+	}
 	linuxMac := "curl -fsSL https://tailscale.com/install.sh | sh && sudo " + up
 	windows := "powershell -Command \"Invoke-WebRequest -Uri https://pkgs.tailscale.com/stable/tailscale-ipn.msi -OutFile $env:TEMP\\tailscale.msi; " +
 		"Start-Process msiexec -ArgumentList '/i',$env:TEMP\\tailscale.msi,'/quiet' -Wait; " +
@@ -707,6 +828,37 @@ func joinCommands(serverURL, key string) map[string]string {
 		"windows":     windows,
 		"note":        "一行命令：先自动安装 Tailscale 客户端，再用内置令牌自动加入本网络（无需登录后台、无需手动导入配置）。",
 	}
+}
+
+// sanitizeHostname turns an arbitrary device description into a DNS-safe
+// Tailscale hostname (lowercase [a-z0-9-]). Non-ASCII (e.g. Chinese) and spaces
+// are dropped/converted to dashes; empty results mean "no hostname".
+func sanitizeHostname(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		} else if r == ' ' || r == '_' || r == '.' || r == '-' {
+			b.WriteRune('-')
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	for strings.Contains(out, "--") {
+		out = strings.ReplaceAll(out, "--", "-")
+	}
+	if len(out) > 32 {
+		out = out[:32]
+	}
+	return out
+}
+
+// shorten returns the first n bytes of s (used for a key prefix preview).
+func shorten(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }
 
 // ---- small utilities ------------------------------------------------------
