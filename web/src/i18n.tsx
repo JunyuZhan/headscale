@@ -22,6 +22,15 @@ const zh: Record<string, string> = {
   admin: "管理员",
   user: "普通用户",
 
+  // Self-service
+  "Joined devices": "已加入的设备",
+  "No devices yet.": "暂无设备。",
+  "Generate join key (self-service)": "生成接入密钥（自助入网）",
+  "Target user": "目标用户",
+  "Create a Headscale user first": "请先在「用户」页面创建 Headscale 用户",
+  "Join command (key shown once)": "接入命令（密钥仅显示一次）",
+  "Copy command": "复制命令",
+
   // Generic
   "Loading…": "加载中…",
   Refresh: "刷新",

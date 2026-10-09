@@ -411,21 +411,32 @@ func (s *Server) handleSelf(w http.ResponseWriter, r *http.Request) {
 // user and returns it together with ready-to-use join commands / config.
 func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 	u := userFromContext(r.Context())
-	if u.Role != "user" || u.HeadscaleUser == "" {
-		writeError(w, http.StatusForbidden, "only mapped users can self-provision")
-		return
-	}
 	var body struct {
-		Reusable  bool   `json:"reusable"`
-		Ephemeral bool   `json:"ephemeral"`
-		ExpirationHours int `json:"expiration_hours"`
+		Reusable        bool   `json:"reusable"`
+		Ephemeral       bool   `json:"ephemeral"`
+		ExpirationHours int    `json:"expiration_hours"`
+		HeadscaleUser   string `json:"headscale_user"` // admin picks a target user
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ExpirationHours <= 0 || body.ExpirationHours > 24*30 {
 		body.ExpirationHours = 24
 	}
 
-	key, err := s.createPreAuthKey(u.HeadscaleUser, body.Reusable, body.Ephemeral, body.ExpirationHours)
+	// Determine the target Headscale user for the new key.
+	target := u.HeadscaleUser
+	if u.Role == "admin" {
+		// Admins are not bound to a single Headscale user, so they must pick one.
+		if body.HeadscaleUser == "" {
+			writeError(w, http.StatusBadRequest, "管理员需先选择目标 Headscale 用户")
+			return
+		}
+		target = body.HeadscaleUser
+	} else if u.Role != "user" || u.HeadscaleUser == "" {
+		writeError(w, http.StatusForbidden, "only mapped users can self-provision")
+		return
+	}
+
+	key, err := s.createPreAuthKey(target, body.Reusable, body.Ephemeral, body.ExpirationHours)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "create key failed: "+err.Error())
 		return
@@ -593,9 +604,27 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, target string) 
 		return
 	}
 	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	// Headscale returns HTTP 500 with "acl policy not found" when no ACL policy
+	// is configured (policy.mode=database). That is semantically "empty policy",
+	// not a server fault, so normalize it to a clean 200 with an empty policy.
+	// This keeps the web UI's "no policy yet" template working without a console
+	// error.
+	if resp.StatusCode == http.StatusInternalServerError &&
+		r.Method == http.MethodGet &&
+		strings.HasSuffix(r.URL.Path, "/policy") &&
+		strings.Contains(string(respBody), "acl policy not found") {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"policy":""}`))
+		return
+	}
+
 	copyHeader(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	w.Write(respBody)
 }
 
 // ---- Headscale helpers ----------------------------------------------------

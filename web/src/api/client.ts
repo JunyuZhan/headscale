@@ -138,7 +138,12 @@ async function backendFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const self = {
   info: () => backendFetch<{ username: string; role: string; headscale_user: string; nodes?: unknown }>("/me"),
-  createKey: (reusable: boolean, ephemeral: boolean, expiration_hours: number) =>
+  createKey: (
+    reusable: boolean,
+    ephemeral: boolean,
+    expiration_hours: number,
+    headscale_user?: string,
+  ) =>
     backendFetch<{
       key: string;
       server_url: string;
@@ -147,7 +152,7 @@ export const self = {
       expiration_hours: number;
     }>("/me/preauthkey", {
       method: "POST",
-      body: JSON.stringify({ reusable, ephemeral, expiration_hours }),
+      body: JSON.stringify({ reusable, ephemeral, expiration_hours, headscale_user }),
     }),
 };
 
