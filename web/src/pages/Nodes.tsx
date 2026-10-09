@@ -124,11 +124,11 @@ export default function Nodes() {
                   <button
                     className="text-red-400 hover:underline"
                     onClick={() => {
-                      if (window.confirm(`${t("Delete node")} ${n.name}？`))
+                      if (window.confirm(`${t("Revoke node")} ${n.name}？`))
                         run(t("Delete failed"), () => api.deleteNode(n.id));
                     }}
                   >
-                    {t("Delete")}
+                    {t("Revoke device")}
                   </button>
                 </td>
               </tr>

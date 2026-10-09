@@ -10,6 +10,7 @@ import Users from "./pages/Users";
 import PreAuthKeys from "./pages/PreAuthKeys";
 import Policy from "./pages/Policy";
 import SelfService from "./pages/SelfService";
+import Invite from "./pages/Invite";
 
 function AppInner() {
   const [me, setMe] = useState<Me | null>(null);
@@ -50,6 +51,7 @@ function AppInner() {
               <Route path="/users" element={<Users />} />
               <Route path="/keys" element={<PreAuthKeys />} />
               <Route path="/policy" element={<Policy />} />
+              <Route path="/invite" element={<Invite />} />
             </>
           )}
         </Route>

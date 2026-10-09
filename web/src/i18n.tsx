@@ -101,6 +101,24 @@ const zh: Record<string, string> = {
   "Quick add rule": "快速添加规则",
   Add: "添加",
   "— none —": "— 无 —",
+
+  // Invite device
+  "Invite device": "邀请设备",
+  "Invite a colleague to join": "邀请同事加入本网络",
+  "Generate an invite command with a built-in token.":
+    "生成一条带内置令牌的邀请命令，同事运行即自动加入（无需登录后台）。",
+  "Generate invite command": "生成邀请命令",
+  "Key (shown once)": "密钥（仅显示一次）",
+  "Linux / macOS": "Linux / macOS",
+  "Windows": "Windows",
+  "Copy install script": "复制命令",
+  "Download script": "下载脚本",
+  "Token valid for": "令牌有效期",
+  "hours": "小时",
+  "Revoke anytime from": "可随时在",
+  "Revoke device": "吊销设备",
+  "Revoke node": "吊销节点",
+  "Target user is required": "请选择目标用户",
 };
 
 const STORAGE_KEY = "hs_lang";

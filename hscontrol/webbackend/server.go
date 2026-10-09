@@ -693,12 +693,19 @@ func (s *Server) createPreAuthKey(hsUser string, reusable, ephemeral bool, expHo
 }
 
 // joinCommands builds platform-specific Tailscale join commands for the user.
+// Each command bundles the client install step so a colleague can run a single
+// line to download Tailscale AND auto-join this control server: no web login and
+// no manual config import are needed — the authkey + login-server ARE the config.
 func joinCommands(serverURL, key string) map[string]string {
-	base := fmt.Sprintf("tailscale up --login-server %s --authkey %s", serverURL, key)
+	up := fmt.Sprintf("tailscale up --login-server %s --authkey %s", serverURL, key)
+	linuxMac := "curl -fsSL https://tailscale.com/install.sh | sh && sudo " + up
+	windows := "powershell -Command \"Invoke-WebRequest -Uri https://pkgs.tailscale.com/stable/tailscale-ipn.msi -OutFile $env:TEMP\\tailscale.msi; " +
+		"Start-Process msiexec -ArgumentList '/i',$env:TEMP\\tailscale.msi,'/quiet' -Wait; " +
+		"& 'C:\\Program Files\\Tailscale\\tailscale.exe' " + up + "\""
 	return map[string]string{
-		"linux_macos": base,
-		"windows":     "tailscale.exe up --login-server " + serverURL + " --authkey " + key,
-		"note":        "在设备安装 Tailscale 客户端后，运行对应命令即可自动加入网络。",
+		"linux_macos": linuxMac,
+		"windows":     windows,
+		"note":        "一行命令：先自动安装 Tailscale 客户端，再用内置令牌自动加入本网络（无需登录后台、无需手动导入配置）。",
 	}
 }
 

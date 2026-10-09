@@ -12,6 +12,7 @@ const adminNav = [
   { to: "/users", key: "Users", end: false },
   { to: "/keys", key: "Pre-auth keys", end: false },
   { to: "/policy", key: "ACL Policy", end: false },
+  { to: "/invite", key: "Invite device", end: false },
 ];
 
 export default function Layout({
