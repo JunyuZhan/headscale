@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, self, type Me, type User } from "../api/client";
 import { useI18n } from "../i18n";
+import { buildMobileConfig, buildAndroidConfig } from "../lib/mobileconfig";
 
 interface NodeRow {
   id?: string;
@@ -17,6 +18,16 @@ interface KeyResult {
   headscale_user: string;
   commands: Record<string, string>;
   expiration_hours: number;
+}
+
+function download(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function SelfService() {
@@ -94,46 +105,48 @@ export default function SelfService() {
       {error && <div className="text-red-400 text-sm">{error}</div>}
 
       {!isAdmin && (
-        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-slate-200 mb-2">
+        <div className="card p-4">
+          <h3 className="text-sm font-medium text-slate-200 mb-3">
             {t("Joined devices")}
           </h3>
           {nodes.length === 0 ? (
             <p className="text-sm text-slate-500">{t("No devices yet.")}</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="text-slate-400">
-                <tr className="text-left">
-                  <th className="py-1">{t("Name")}</th>
-                  <th className="py-1">{t("Address")}</th>
-                  <th className="py-1">{t("Status")}</th>
-                  <th className="py-1">{t("Last seen")}</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-300">
-                {nodes.map((n, i) => (
-                  <tr key={n.id ?? i} className="border-t border-slate-800">
-                    <td className="py-1">{n.name ?? "—"}</td>
-                    <td className="py-1 font-mono">
-                      {(n.addresses ?? []).join(", ")}
-                    </td>
-                    <td className="py-1">
-                      {n.connected ? (
-                        <span className="text-emerald-400">{t("online")}</span>
-                      ) : (
-                        <span className="text-slate-500">{t("offline")}</span>
-                      )}
-                    </td>
-                    <td className="py-1">{n.lastSeen ?? "—"}</td>
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="text-slate-400">
+                  <tr className="text-left">
+                    <th className="py-1 pr-3">{t("Name")}</th>
+                    <th className="py-1 pr-3">{t("Address")}</th>
+                    <th className="py-1 pr-3">{t("Status")}</th>
+                    <th className="py-1">{t("Last seen")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="text-slate-300">
+                  {nodes.map((n, i) => (
+                    <tr key={n.id ?? i} className="border-t border-slate-800">
+                      <td className="py-1 pr-3">{n.name ?? "—"}</td>
+                      <td className="py-1 pr-3 font-mono">
+                        {(n.addresses ?? []).join(", ")}
+                      </td>
+                      <td className="py-1 pr-3">
+                        {n.connected ? (
+                          <span className="text-emerald-400">{t("online")}</span>
+                        ) : (
+                          <span className="text-slate-500">{t("offline")}</span>
+                        )}
+                      </td>
+                      <td className="py-1">{n.lastSeen ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3 max-w-lg">
+      <div className="card p-4 space-y-3 max-w-lg">
         <h3 className="text-sm font-medium text-slate-200">
           {t("Generate join key (self-service)")}
         </h3>
@@ -175,26 +188,111 @@ export default function SelfService() {
       </div>
 
       {result && (
-        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-slate-200">
+        <div className="card p-4 space-y-4">
+          <div>
+            <h3 className="text-base font-medium text-white mb-1">
               {t("Join command (key shown once)")}
             </h3>
-            <button
-              onClick={() => copy(result.commands.linux_macos ?? "")}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
-            >
-              {t("Copy command")}
-            </button>
+            <p className="text-xs text-slate-500 mb-3">
+              {t("Token valid for")} {result.expiration_hours} {t("hours")} ·
+              {t("Revoke anytime from")} <span className="text-brand-500">{t("Nodes")}</span>
+            </p>
           </div>
-          <pre className="bg-slate-950 border border-slate-800 rounded p-3 text-xs text-emerald-300 overflow-auto">
+
+          {/* macOS / Linux */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-slate-200">
+                {t("Linux / macOS")}
+              </span>
+              <div className="space-x-2">
+                <button
+                  onClick={() => copy(result.commands.linux_macos ?? "")}
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                >
+                  {t("Copy install script")}
+                </button>
+                <button
+                  onClick={() =>
+                    download("join.sh", result.commands.linux_macos ?? "")
+                  }
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                >
+                  {t("Download script")}
+                </button>
+              </div>
+            </div>
+            <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
 {result.commands.linux_macos}
-          </pre>
-          <p className="text-xs text-slate-400">{result.commands.note}</p>
-          <p className="text-xs text-slate-500">
-            Windows 用户请将命令中的可执行文件替换为{" "}
-            <code>tailscale.exe</code>。密钥有效期 {result.expiration_hours} 小时。
-          </p>
+            </pre>
+          </div>
+
+          {/* Windows */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-slate-200">
+                {t("Windows")}
+              </span>
+              <div className="space-x-2">
+                <button
+                  onClick={() => copy(result.commands.windows ?? "")}
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                >
+                  {t("Copy install script")}
+                </button>
+                <button
+                  onClick={() =>
+                    download("join.ps1", result.commands.windows ?? "")
+                  }
+                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                >
+                  {t("Download script")}
+                </button>
+              </div>
+            </div>
+            <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
+{result.commands.windows}
+            </pre>
+          </div>
+
+          {/* Mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+              <div className="text-sm font-medium text-slate-200">
+                {t("Mobile access")} · iOS
+              </div>
+              <button
+                onClick={() =>
+                  download(
+                    "tailscale.mobileconfig",
+                    buildMobileConfig(result.server_url, result.key),
+                  )
+                }
+                className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {t("Download profile (iOS)")}
+              </button>
+              <p className="text-xs text-slate-400">{t("Install profile hint")}</p>
+              <p className="text-xs text-slate-500">{t("Auth key embedded")}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+              <div className="text-sm font-medium text-slate-200">
+                {t("Mobile access")} · {t("Android access")}
+              </div>
+              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
+{buildAndroidConfig(result.server_url, result.key)}
+              </pre>
+              <button
+                onClick={() =>
+                  copy(buildAndroidConfig(result.server_url, result.key))
+                }
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg"
+              >
+                {t("Copy config")}
+              </button>
+              <p className="text-xs text-slate-500">{t("Android note")}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -223,9 +321,9 @@ function KeyForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <p className="text-xs text-slate-400">
-        生成后复制下方命令，在设备安装 Tailscale 客户端并运行即可自动加入网络。
+        生成后复制下方命令，在设备安装 Tailscale 客户端并运行即可自动加入网络；手机用户可直接下载移动端配置。
       </p>
-      <div className="flex items-center gap-4 text-sm text-slate-300">
+      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
         <label className="flex items-center gap-1">
           <input
             type="checkbox"
@@ -259,7 +357,7 @@ function KeyForm({
         disabled={busy}
         className="bg-brand-600 hover:bg-brand-500 text-white py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
       >
-        {busy ? "Generating…" : "生成并下载配置"}
+        {busy ? "生成中…" : "生成接入命令"}
       </button>
     </form>
   );
