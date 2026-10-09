@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type PreAuthKey } from "../api/client";
+import { useI18n } from "../i18n";
 
 function toRFC3339(value: string): string | undefined {
   if (!value) return undefined;
@@ -8,6 +9,7 @@ function toRFC3339(value: string): string | undefined {
 }
 
 export default function PreAuthKeys() {
+  const { t } = useI18n();
   const [keys, setKeys] = useState<PreAuthKey[]>([]);
   const [newKey, setNewKey] = useState<PreAuthKey | null>(null);
   const [error, setError] = useState("");
@@ -44,7 +46,7 @@ export default function PreAuthKeys() {
     e.preventDefault();
     const u = user.trim();
     if (!u) {
-      setError("User is required");
+      setError(t("User is required"));
       return;
     }
     setError("");
@@ -56,7 +58,7 @@ export default function PreAuthKeys() {
         toRFC3339(expiration),
         aclTags
           .split(/\s+/)
-          .map((t) => t.trim())
+          .map((tag) => tag.trim())
           .filter(Boolean),
       );
       setNewKey(r.preAuthKey);
@@ -67,23 +69,25 @@ export default function PreAuthKeys() {
       setEphemeral(false);
       load();
     } catch (e) {
-      setError(`Create failed: ${(e as Error).message}`);
+      setError(`${t("Create failed")}: ${(e as Error).message}`);
     }
   };
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-4">Pre-auth keys</h1>
+      <h1 className="text-2xl font-semibold text-white mb-4">
+        {t("Pre-auth keys")}
+      </h1>
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
 
       {newKey?.key && (
         <div className="mb-4 bg-emerald-900/40 border border-emerald-700 rounded p-3 text-sm">
-          <div className="text-emerald-300 font-medium">New key created</div>
+          <div className="text-emerald-300 font-medium">{t("New key created")}</div>
           <code className="block mt-1 break-all text-emerald-200">
             {newKey.key}
           </code>
           <div className="text-emerald-400/70 text-xs mt-1">
-            Copy it now — it will not be shown again.
+            {t("Copy it now — it will not be shown again.")}
           </div>
         </div>
       )}
@@ -94,7 +98,7 @@ export default function PreAuthKeys() {
       >
         <input
           className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200"
-          placeholder="User name"
+          placeholder={t("User name")}
           value={user}
           onChange={(e) => setUser(e.target.value)}
         />
@@ -106,7 +110,7 @@ export default function PreAuthKeys() {
         />
         <input
           className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200"
-          placeholder="ACL tags (e.g. tag:server)"
+          placeholder={t("ACL tags (e.g. tag:server)")}
           value={aclTags}
           onChange={(e) => setAclTags(e.target.value)}
         />
@@ -117,7 +121,7 @@ export default function PreAuthKeys() {
               checked={reusable}
               onChange={(e) => setReusable(e.target.checked)}
             />
-            Reusable
+            {t("Reusable")}
           </label>
           <label className="flex items-center gap-1">
             <input
@@ -125,14 +129,14 @@ export default function PreAuthKeys() {
               checked={ephemeral}
               onChange={(e) => setEphemeral(e.target.checked)}
             />
-            Ephemeral
+            {t("Ephemeral")}
           </label>
         </div>
         <button
           type="submit"
           className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-1.5 rounded text-sm col-span-2"
         >
-          Create key
+          {t("Create key")}
         </button>
       </form>
 
@@ -140,12 +144,12 @@ export default function PreAuthKeys() {
         <table className="w-full text-sm">
           <thead className="bg-slate-800 text-slate-300">
             <tr>
-              <th className="text-left p-3">ID</th>
-              <th className="text-left p-3">User</th>
-              <th className="text-left p-3">Reusable</th>
-              <th className="text-left p-3">Expiration</th>
-              <th className="text-left p-3">Tags</th>
-              <th className="text-left p-3">Actions</th>
+              <th className="text-left p-3">{t("ID")}</th>
+              <th className="text-left p-3">{t("User")}</th>
+              <th className="text-left p-3">{t("Reusable")}</th>
+              <th className="text-left p-3">{t("Expiration")}</th>
+              <th className="text-left p-3">{t("Tags")}</th>
+              <th className="text-left p-3">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -155,7 +159,9 @@ export default function PreAuthKeys() {
                   {k.id}
                 </td>
                 <td className="p-3 text-slate-400">{k.user ?? "—"}</td>
-                <td className="p-3 text-slate-400">{k.reusable ? "yes" : "no"}</td>
+                <td className="p-3 text-slate-400">
+                  {k.reusable ? t("yes") : t("no")}
+                </td>
                 <td className="p-3 text-slate-400 text-xs">
                   {k.expiration ?? "—"}
                 </td>
@@ -166,18 +172,18 @@ export default function PreAuthKeys() {
                   <button
                     className="text-amber-400 hover:underline"
                     onClick={() =>
-                      run("Expire failed", () => api.expirePreAuthKey(k.id))
+                      run(t("Expire failed"), () => api.expirePreAuthKey(k.id))
                     }
                   >
-                    Expire
+                    {t("Expire")}
                   </button>
                   <button
                     className="text-red-400 hover:underline"
                     onClick={() =>
-                      run("Delete failed", () => api.deletePreAuthKey(k.id))
+                      run(t("Delete failed"), () => api.deletePreAuthKey(k.id))
                     }
                   >
-                    Delete
+                    {t("Delete")}
                   </button>
                 </td>
               </tr>
@@ -185,14 +191,14 @@ export default function PreAuthKeys() {
             {keys.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-4 text-center text-slate-500">
-                  No keys
+                  {t("No keys")}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      {busy && <div className="text-slate-500 text-sm mt-2">Loading…</div>}
+      {busy && <div className="text-slate-500 text-sm mt-2">{t("Loading…")}</div>}
     </div>
   );
 }

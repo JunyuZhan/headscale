@@ -1,0 +1,61 @@
+# Deployment on the production VPS where an existing host nginx (port 80/443)
+# already terminates TLS and serves sclink.dev. We do NOT run Caddy here.
+#
+#   - headscale + webbackend share ONE image (headscale-web:local) and run as two
+#     services. The browser never sees the Headscale API key: the web backend
+#     holds it and proxies.
+#   - Both services publish ONLY to 127.0.0.1 (18080 / 18090); the host nginx is
+#     the single public entry and reverse-proxies to them.
+#   - SQLite is used for both headscale and the web UI user DB (isolated from the
+#     existing securelink Postgres).
+#
+# Build the image once on a machine with Docker, then `docker save` it and load
+# it on the VPS (see README). The image is referenced by name below.
+
+services:
+  headscale:
+    image: headscale-web:local
+    command: ["headscale", "serve"]
+    environment:
+      HEADSCALE_CONFIG: /etc/headscale/config.yaml
+    volumes:
+      - ./headscale-config.yaml:/etc/headscale/config.yaml:ro
+      - hs_data:/var/lib/headscale
+    networks:
+      - headscale_net
+    expose:
+      - "8080"
+    ports:
+      - "127.0.0.1:18080:8080"
+    restart: unless-stopped
+
+  webbackend:
+    image: headscale-web:local
+    command: ["webbackend"]
+    environment:
+      WEBUI_LISTEN: ":8090"
+      HEADSCALE_URL: "http://headscale:8080"
+      HEADSCALE_API_KEY: "${HEADSCALE_API_KEY}"
+      WEBUI_DB: "/var/lib/webui/webui.db"
+      WEBUI_COOKIE_SECURE: "true"        # behind HTTPS -> secure cookie
+      WEBUI_BOOTSTRAP_ADMIN: "${WEBUI_BOOTSTRAP_ADMIN}"   # "user:pass" first run
+      HEADSCALE_PUBLIC_URL: "https://hs.sclink.dev"
+    volumes:
+      - webui_data:/var/lib/webui
+    networks:
+      - headscale_net
+    expose:
+      - "8090"
+    ports:
+      - "127.0.0.1:18090:8090"
+    depends_on:
+      - headscale
+    restart: unless-stopped
+
+volumes:
+  hs_data:
+  webui_data:
+
+networks:
+  headscale_net:
+    driver: bridge

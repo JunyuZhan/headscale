@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../api/client";
+import { useI18n } from "../i18n";
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
+  const { t } = useI18n();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -59,7 +61,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           disabled={busy}
           className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-md text-sm font-medium disabled:opacity-50"
         >
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? t("Signing in…") : t("Sign in")}
         </button>
       </form>
     </div>

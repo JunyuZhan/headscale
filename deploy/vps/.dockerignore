@@ -1,0 +1,9 @@
+# Build-context exclusions for deploy/vps/Dockerfile (overrides repo .dockerignore
+# via `docker build --ignorefile deploy/vps/.dockerignore`).
+.git
+.workbuddy
+node_modules
+hscontrol/webui/dist/*
+!hscontrol/webui/dist/.gitkeep
+integration_test.go
+integration_test/

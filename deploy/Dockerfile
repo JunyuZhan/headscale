@@ -17,7 +17,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 # Bring in the prebuilt web UI so //go:embed picks it up.
-COPY --from=webbuild /src/web/dist ./hscontrol/webui/dist
+# (vite outDir is ../hscontrol/webui/dist, i.e. /src/hscontrol/webui/dist)
+COPY --from=webbuild /src/hscontrol/webui/dist ./hscontrol/webui/dist
 RUN go build -o /out/headscale ./cmd/headscale
 RUN go build -o /out/webbackend ./cmd/webbackend
 
@@ -29,5 +30,5 @@ COPY --from=gobuild /out/webbackend /usr/local/bin/webbackend
 # Default data dirs (override with volumes).
 RUN mkdir -p /var/lib/headscale /var/lib/webui
 EXPOSE 8080 8090
-ENTRYPOINT ["/usr/local/bin/headscale"]
-CMD ["serve"]
+# No ENTRYPOINT/CMD here: compose sets `command` to run either binary.
+

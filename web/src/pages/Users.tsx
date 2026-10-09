@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type User } from "../api/client";
+import { useI18n } from "../i18n";
 
 export default function Users() {
+  const { t } = useI18n();
   const [users, setUsers] = useState<User[]>([]);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -32,18 +34,18 @@ export default function Users() {
     e.preventDefault();
     const value = name.trim();
     if (!value) return;
-    await run("Create failed", () => api.createUser(value));
+    await run(t("Create failed"), () => api.createUser(value));
     setName("");
   };
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-4">Users</h1>
+      <h1 className="text-2xl font-semibold text-white mb-4">{t("Users")}</h1>
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
       <form onSubmit={create} className="flex gap-2 mb-4">
         <input
           className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 flex-1"
-          placeholder="New user name"
+          placeholder={t("New user name")}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -51,17 +53,17 @@ export default function Users() {
           type="submit"
           className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-1.5 rounded text-sm"
         >
-          Create
+          {t("Create")}
         </button>
       </form>
       <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-800 text-slate-300">
             <tr>
-              <th className="text-left p-3">Name</th>
-              <th className="text-left p-3">Display name</th>
-              <th className="text-left p-3">Email</th>
-              <th className="text-left p-3">Actions</th>
+              <th className="text-left p-3">{t("Name")}</th>
+              <th className="text-left p-3">{t("Display name")}</th>
+              <th className="text-left p-3">{t("Email")}</th>
+              <th className="text-left p-3">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -74,11 +76,11 @@ export default function Users() {
                   <button
                     className="text-red-400 hover:underline"
                     onClick={() => {
-                      if (window.confirm(`Delete user ${u.name}?`))
-                        run("Delete failed", () => api.deleteUser(u.id));
+                      if (window.confirm(`${t("Delete user")} ${u.name}？`))
+                        run(t("Delete failed"), () => api.deleteUser(u.id));
                     }}
                   >
-                    Delete
+                    {t("Delete")}
                   </button>
                 </td>
               </tr>
@@ -86,14 +88,14 @@ export default function Users() {
             {users.length === 0 && (
               <tr>
                 <td colSpan={4} className="p-4 text-center text-slate-500">
-                  No users
+                  {t("No users")}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      {busy && <div className="text-slate-500 text-sm mt-2">Loading…</div>}
+      {busy && <div className="text-slate-500 text-sm mt-2">{t("Loading…")}</div>}
     </div>
   );
 }

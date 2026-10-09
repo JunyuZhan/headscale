@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, type Me } from "../api/client";
+import { useI18n } from "../i18n";
 
 export default function Dashboard() {
   const me = useOutletContext<Me>();
+  const { t } = useI18n();
   const [stats, setStats] = useState<{
     nodes: number;
     users?: number;
@@ -19,25 +21,23 @@ export default function Dashboard() {
         setStats({
           nodes: (n as { nodes: unknown[] }).nodes.length,
           keys: (k as { preAuthKeys: unknown[] }).preAuthKeys.length,
-          users: u
-            ? (u as { users: unknown[] }).users.length
-            : undefined,
+          users: u ? (u as { users: unknown[] }).users.length : undefined,
         }),
       )
       .catch((e) => setError(String(e.message ?? e)));
   }, [me.role]);
 
   const cards = [
-    { label: "Nodes", value: stats?.nodes },
+    { label: t("Nodes"), value: stats?.nodes },
     ...(me.role === "admin"
-      ? [{ label: "Users", value: stats?.users }]
+      ? [{ label: t("Users"), value: stats?.users }]
       : []),
-    { label: "Pre-auth keys", value: stats?.keys },
+    { label: t("Pre-auth keys"), value: stats?.keys },
   ];
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-6">Overview</h1>
+      <h1 className="text-2xl font-semibold text-white mb-6">{t("Overview")}</h1>
       {error && <div className="text-red-400 mb-4">{error}</div>}
       <div className="grid grid-cols-3 gap-4">
         {cards.map((c) => (
@@ -54,8 +54,8 @@ export default function Dashboard() {
       </div>
       <p className="text-slate-400 text-sm mt-6">
         {me.role === "admin"
-          ? "Use the sidebar to manage nodes, users, pre-auth keys and the ACL policy."
-          : "Use “My devices” to view your devices and generate a join key."}
+          ? "使用左侧导航管理节点、用户、预授权密钥与访问控制策略。"
+          : "在「我的设备」中查看你的设备并生成接入密钥。"}
       </p>
     </div>
   );

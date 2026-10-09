@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { auth, type Me } from "./api/client";
+import { LangProvider, useI18n } from "./i18n";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -10,9 +11,10 @@ import PreAuthKeys from "./pages/PreAuthKeys";
 import Policy from "./pages/Policy";
 import SelfService from "./pages/SelfService";
 
-export default function App() {
+function AppInner() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     auth
@@ -23,7 +25,7 @@ export default function App() {
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-slate-400">Loading…</div>;
+    return <div className="p-8 text-slate-400">{t("Loading…")}</div>;
   }
 
   return (
@@ -55,5 +57,13 @@ export default function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       )}
     </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <LangProvider>
+      <AppInner />
+    </LangProvider>
   );
 }

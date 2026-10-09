@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { api } from "../api/client";
+import { useI18n } from "../i18n";
 
 const DEFAULT_POLICY = `{
   // Groups define sets of users or devices.
@@ -76,6 +77,7 @@ function parseHuJSON(text: string): Record<string, unknown> | null {
 }
 
 export default function Policy() {
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
@@ -104,7 +106,7 @@ export default function Policy() {
         setText(DEFAULT_POLICY);
         setExists(false);
       } else {
-        setError(`Load failed: ${m}`);
+        setError(`${t("Load")}失败: ${m}`);
       }
     } finally {
       setBusy(false);
@@ -117,9 +119,9 @@ export default function Policy() {
     setBusy(true);
     try {
       await api.setPolicy(text);
-      setMsg("Policy saved.");
+      setMsg(`${t("Save")}成功。`);
     } catch (e) {
-      setError(`Save failed: ${(e as Error).message}`);
+      setError(`${t("Save")}失败: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -131,9 +133,9 @@ export default function Policy() {
     setBusy(true);
     try {
       await api.checkPolicy(text);
-      setMsg("Policy is valid.");
+      setMsg(`${t("Validate")}通过，策略有效。`);
     } catch (e) {
-      setError(`Check failed: ${(e as Error).message}`);
+      setError(`${t("Validate")}失败: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -149,7 +151,7 @@ export default function Policy() {
     });
     obj.acls = acls;
     setText(JSON.stringify(obj, null, 2));
-    setMsg("Rule appended. Review and Save.");
+    setMsg("已追加规则，请审阅后保存。");
   };
 
   const parsed = parseHuJSON(text);
@@ -161,28 +163,28 @@ export default function Policy() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold text-white">ACL Policy</h1>
+        <h1 className="text-2xl font-semibold text-white">{t("ACL Policy")}</h1>
         <div className="space-x-2">
           <button
             onClick={load}
             disabled={busy}
             className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
-            Load
+            {t("Load")}
           </button>
           <button
             onClick={check}
             disabled={busy}
             className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
-            Validate
+            {t("Validate")}
           </button>
           <button
             onClick={save}
             disabled={busy}
             className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
-            Save
+            {t("Save")}
           </button>
         </div>
       </div>
@@ -190,13 +192,13 @@ export default function Policy() {
       {msg && <div className="text-emerald-400 mb-3 text-sm">{msg}</div>}
       {exists === false && (
         <div className="text-amber-400 mb-3 text-sm">
-          No policy is stored yet. Saving will create one.
+          {t("No policy is stored yet. Saving will create one.")}
         </div>
       )}
 
       {/* Visualization */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <VizCard title="Groups">
+        <VizCard title={t("Groups")}>
           {Object.keys(groups).length === 0 ? (
             <Empty />
           ) : (
@@ -208,7 +210,7 @@ export default function Policy() {
             ))
           )}
         </VizCard>
-        <VizCard title="Hosts">
+        <VizCard title={t("Hosts")}>
           {Object.keys(hosts).length === 0 ? (
             <Empty />
           ) : (
@@ -220,13 +222,13 @@ export default function Policy() {
             ))
           )}
         </VizCard>
-        <VizCard title="Tag owners">
+        <VizCard title={t("Tag owners")}>
           {Object.keys(tagOwners).length === 0 ? (
             <Empty />
           ) : (
-            Object.entries(tagOwners).map(([t, o]) => (
-              <div key={t} className="text-sm">
-                <span className="text-brand-500">{t}</span>
+            Object.entries(tagOwners).map(([tag, o]) => (
+              <div key={tag} className="text-sm">
+                <span className="text-brand-500">{tag}</span>
                 <span className="text-slate-400"> → {o.join(", ")}</span>
               </div>
             ))
@@ -234,16 +236,16 @@ export default function Policy() {
         </VizCard>
       </div>
 
-      <VizCard title={`ACL rules (${acls.length})`}>
+      <VizCard title={`${t("ACL rules")} (${acls.length})`}>
         {acls.length === 0 ? (
           <Empty />
         ) : (
           <table className="w-full text-sm">
             <thead className="text-slate-400">
               <tr className="text-left">
-                <th className="py-1 pr-3">Action</th>
-                <th className="py-1 pr-3">Source</th>
-                <th className="py-1">Destination</th>
+                <th className="py-1 pr-3">{t("Action")}</th>
+                <th className="py-1 pr-3">{t("Source")}</th>
+                <th className="py-1">{t("Destination")}</th>
               </tr>
             </thead>
             <tbody className="text-slate-300">
@@ -257,7 +259,7 @@ export default function Policy() {
                           : "text-emerald-400"
                       }
                     >
-                      {r.action ?? "accept"}
+                      {t(r.action ?? "accept")}
                     </span>
                   </td>
                   <td className="py-1 pr-3">{(r.src ?? []).join(", ")}</td>
@@ -270,15 +272,15 @@ export default function Policy() {
       </VizCard>
 
       <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mt-4 space-y-3">
-        <h3 className="text-sm font-medium text-slate-200">Quick add rule</h3>
+        <h3 className="text-sm font-medium text-slate-200">{t("Quick add rule")}</h3>
         <div className="flex flex-wrap gap-2 items-center text-sm">
           <select
             value={action}
             onChange={(e) => setAction(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200"
           >
-            <option value="accept">accept</option>
-            <option value="deny">deny</option>
+            <option value="accept">{t("accept")}</option>
+            <option value="deny">{t("deny")}</option>
           </select>
           <input
             placeholder="src: group:admins,*"
@@ -297,17 +299,16 @@ export default function Policy() {
             onClick={addRule}
             className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded text-sm"
           >
-            Add
+            {t("Add")}
           </button>
         </div>
         <p className="text-xs text-slate-500">
-          添加规则会以规范 JSON 覆盖当前文本（注释会丢失）。添加后请审阅并点 Save。
+          添加规则会以规范 JSON 覆盖当前文本（注释会丢失）。添加后请审阅并点击「{t("Save")}」。
         </p>
       </div>
 
       <p className="text-slate-400 text-xs mb-2 mt-4">
-        Editing requires DB mode (policy.mode: database); in file mode the policy
-        lives on disk. HuJSON allows comments and trailing commas.
+        编辑需要数据库模式（policy.mode: database）；在文件模式下策略存于磁盘。HuJSON 支持注释与尾随逗号。
       </p>
       <textarea
         className="w-full h-[40vh] bg-slate-900 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200"
@@ -329,5 +330,5 @@ function VizCard({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function Empty() {
-  return <div className="text-sm text-slate-500">— none —</div>;
+  return <div className="text-sm text-slate-500">{`— 无 —`}</div>;
 }
