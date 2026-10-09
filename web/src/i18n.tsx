@@ -148,6 +148,20 @@ const zh: Record<string, string> = {
   "Confirm password": "确认新密码",
   "Password changed": "密码已修改",
   "Change password failed": "修改密码失败",
+
+  // Mobile onboarding
+  "Mobile access": "移动端接入",
+  "Download profile (iOS)": "下载描述文件（iOS）",
+  "iOS install steps": "iOS 安装步骤",
+  "Android access": "Android 接入",
+  "Android note":
+    "Android 需通过 MDM（Android Enterprise）下发 ServerURL + AuthKey 托管配置，或先将设备设为完全托管设备后再安装 Tailscale。",
+  "Managed config (Android)": "Android 托管配置（JSON）",
+  "Copy config": "复制配置",
+  "Install profile hint":
+    "将描述文件通过 AirDrop / 邮件 / 网盘发送到 iPhone 或 iPad，打开「设置 → 已下载的描述文件」安装，再打开 Tailscale 即可自动连接。",
+  "Server": "服务器",
+  "Auth key embedded": "密钥已内嵌于描述文件（仅显示一次，请妥善保管）",
 };
 
 const STORAGE_KEY = "hs_lang";

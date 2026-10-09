@@ -151,7 +151,7 @@ export default function SelfService() {
               <select
                 value={targetUser}
                 onChange={(e) => setTargetUser(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200"
               >
                 {users.map((u) => (
                   <option key={u.id} value={u.name}>
@@ -250,7 +250,7 @@ function KeyForm({
             max={720}
             value={hours}
             onChange={(e) => setHours(Math.max(1, Number(e.target.value) || 24))}
-            className="w-20 bg-slate-800 border border-slate-700 rounded p-1"
+            className="focus-ring w-20 bg-slate-800 border border-slate-700 rounded-lg p-1"
           />
         </label>
       </div>

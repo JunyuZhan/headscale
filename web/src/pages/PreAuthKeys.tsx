@@ -73,20 +73,46 @@ export default function PreAuthKeys() {
     }
   };
 
+  const Pill = ({
+    on,
+    yes,
+    no,
+  }: {
+    on: boolean;
+    yes: string;
+    no: string;
+  }) => (
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full ${
+        on
+          ? "bg-emerald-900/60 text-emerald-300"
+          : "bg-slate-700/70 text-slate-400"
+      }`}
+    >
+      {on ? yes : no}
+    </span>
+  );
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-4">
+      <h1 className="text-2xl font-semibold text-white">
         {t("Pre-auth keys")}
       </h1>
+      <p className="text-sm text-slate-400 mt-1 mb-5">
+        {t("Pre-auth keys let devices join without a web login.")}
+      </p>
+
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
 
       {newKey?.key && (
-        <div className="mb-4 bg-emerald-900/40 border border-emerald-700 rounded p-3 text-sm">
-          <div className="text-emerald-300 font-medium">{t("New key created")}</div>
-          <code className="block mt-1 break-all text-emerald-200">
+        <div className="card border-emerald-700/50 p-4 mb-5">
+          <div className="text-emerald-300 font-medium text-sm">
+            {t("New key created")}
+          </div>
+          <code className="block mt-2 break-all text-emerald-200 text-xs bg-slate-950/60 rounded-lg p-3">
             {newKey.key}
           </code>
-          <div className="text-emerald-400/70 text-xs mt-1">
+          <div className="text-emerald-400/70 text-xs mt-2">
             {t("Copy it now — it will not be shown again.")}
           </div>
         </div>
@@ -94,67 +120,89 @@ export default function PreAuthKeys() {
 
       <form
         onSubmit={create}
-        className="grid grid-cols-2 gap-3 mb-4 bg-slate-900 border border-slate-800 rounded-lg p-4"
+        className="card p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3"
       >
-        <input
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200"
-          placeholder={t("User name")}
-          value={user}
-          onChange={(e) => setUser(e.target.value)}
-        />
-        <input
-          type="datetime-local"
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200"
-          value={expiration}
-          onChange={(e) => setExpiration(e.target.value)}
-        />
-        <input
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200"
-          placeholder={t("ACL tags (e.g. tag:server)")}
-          value={aclTags}
-          onChange={(e) => setAclTags(e.target.value)}
-        />
-        <div className="flex items-center gap-4 text-sm text-slate-300">
-          <label className="flex items-center gap-1">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">
+            {t("User name")}
+          </label>
+          <input
+            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+            placeholder={t("User name")}
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">
+            {t("Expiration")}
+          </label>
+          <input
+            type="datetime-local"
+            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+            value={expiration}
+            onChange={(e) => setExpiration(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">
+            {t("ACL tags (e.g. tag:server)")}
+          </label>
+          <input
+            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+            placeholder={t("ACL tags (e.g. tag:server)")}
+            value={aclTags}
+            onChange={(e) => setAclTags(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-5 text-sm text-slate-300">
+          <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
+              className="accent-brand-500"
               checked={reusable}
               onChange={(e) => setReusable(e.target.checked)}
             />
             {t("Reusable")}
           </label>
-          <label className="flex items-center gap-1">
+          <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
+              className="accent-brand-500"
               checked={ephemeral}
               onChange={(e) => setEphemeral(e.target.checked)}
             />
             {t("Ephemeral")}
           </label>
         </div>
-        <button
-          type="submit"
-          className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-1.5 rounded text-sm col-span-2"
-        >
-          {t("Create key")}
-        </button>
+        <div className="sm:col-span-2">
+          <button
+            type="submit"
+            className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            {t("Create key")}
+          </button>
+        </div>
       </form>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-slate-300">
-            <tr>
-              <th className="text-left p-3">{t("ID")}</th>
-              <th className="text-left p-3">{t("User")}</th>
-              <th className="text-left p-3">{t("Reusable")}</th>
-              <th className="text-left p-3">{t("Expiration")}</th>
-              <th className="text-left p-3">{t("Tags")}</th>
-              <th className="text-left p-3">{t("Actions")}</th>
+          <thead>
+            <tr className="bg-slate-800/60 text-slate-400 text-left">
+              <th className="p-3 font-medium">{t("ID")}</th>
+              <th className="p-3 font-medium">{t("User")}</th>
+              <th className="p-3 font-medium">{t("Reusable")}</th>
+              <th className="p-3 font-medium">{t("Expiration")}</th>
+              <th className="p-3 font-medium">{t("Tags")}</th>
+              <th className="p-3 font-medium text-right">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody>
             {keys.map((k) => (
-              <tr key={k.id} className="border-t border-slate-800">
+              <tr
+                key={k.id}
+                className="border-t border-slate-800 hover:bg-slate-800/40 transition-colors"
+              >
                 <td className="p-3 text-slate-200 font-mono text-xs">
                   {k.id}
                 </td>
@@ -163,8 +211,8 @@ export default function PreAuthKeys() {
                     ? k.user || "—"
                     : (k.user?.name ?? "—")}
                 </td>
-                <td className="p-3 text-slate-400">
-                  {k.reusable ? t("yes") : t("no")}
+                <td className="p-3">
+                  <Pill on={!!k.reusable} yes={t("yes")} no={t("no")} />
                 </td>
                 <td className="p-3 text-slate-400 text-xs">
                   {k.expiration ?? "—"}
@@ -172,9 +220,9 @@ export default function PreAuthKeys() {
                 <td className="p-3 text-slate-400 text-xs">
                   {(k.aclTags ?? []).join(" ") || "—"}
                 </td>
-                <td className="p-3 space-x-2 whitespace-nowrap">
+                <td className="p-3 text-right whitespace-nowrap">
                   <button
-                    className="text-amber-400 hover:underline"
+                    className="text-amber-300 hover:bg-amber-500/15 px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() =>
                       run(t("Expire failed"), () => api.expirePreAuthKey(k.id))
                     }
@@ -182,7 +230,7 @@ export default function PreAuthKeys() {
                     {t("Expire")}
                   </button>
                   <button
-                    className="text-red-400 hover:underline"
+                    className="text-red-300 hover:bg-red-500/15 px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() =>
                       run(t("Delete failed"), () => api.deletePreAuthKey(k.id))
                     }
@@ -194,7 +242,7 @@ export default function PreAuthKeys() {
             ))}
             {keys.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-slate-500">
+                <td colSpan={6} className="p-6 text-center text-slate-500">
                   {t("No keys")}
                 </td>
               </tr>
@@ -202,7 +250,9 @@ export default function PreAuthKeys() {
           </tbody>
         </table>
       </div>
-      {busy && <div className="text-slate-500 text-sm mt-2">{t("Loading…")}</div>}
+      {busy && (
+        <div className="text-slate-500 text-sm mt-2">{t("Loading…")}</div>
+      )}
     </div>
   );
 }

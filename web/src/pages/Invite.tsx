@@ -118,7 +118,7 @@ export default function Invite() {
         <select
           value={targetUser}
           onChange={(e) => setTargetUser(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+          className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200"
         >
           {users.map((u) => (
             <option key={u.id} value={u.name}>
@@ -136,7 +136,7 @@ export default function Invite() {
               value={applicant}
               onChange={(e) => setApplicant(e.target.value)}
               placeholder={t("Applicant")}
-              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200"
             />
           </div>
           <div>
@@ -147,7 +147,7 @@ export default function Invite() {
               value={deviceDesc}
               onChange={(e) => setDeviceDesc(e.target.value)}
               placeholder={t("Device description")}
-              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200"
             />
             <p className="text-xs text-slate-500 mt-1">
               {t("Used as node hostname; ASCII only, e.g. zhangsan-laptop")}
@@ -161,7 +161,7 @@ export default function Invite() {
               value={org}
               onChange={(e) => setOrg(e.target.value)}
               placeholder={t("Organization")}
-              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200"
+              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200"
             />
           </div>
         </div>
@@ -197,7 +197,7 @@ export default function Invite() {
                 onChange={(e) =>
                   setHours(Math.max(1, Number(e.target.value) || 24))
                 }
-                className="w-20 bg-slate-800 border border-slate-700 rounded p-1"
+                className="focus-ring w-20 bg-slate-800 border border-slate-700 rounded-lg p-1"
               />
             </label>
           </div>
@@ -287,7 +287,58 @@ export default function Invite() {
         </div>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      {result && (
+        <div className="card p-4 space-y-4">
+          <h3 className="text-base font-medium text-white">
+            {t("Mobile access")}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+              <div className="text-sm font-medium text-slate-200">
+                iOS（iPhone / iPad）
+              </div>
+              <button
+                onClick={() =>
+                  download(
+                    "tailscale.mobileconfig",
+                    buildMobileConfig(result.server_url, result.key),
+                  )
+                }
+                className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {t("Download profile (iOS)")}
+              </button>
+              <p className="text-xs text-slate-400">{t("Install profile hint")}</p>
+              <p className="text-xs text-slate-500">{t("Auth key embedded")}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+              <div className="text-sm font-medium text-slate-200">
+                {t("Android access")}
+              </div>
+              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
+{JSON.stringify({ ServerURL: result.server_url, AuthKey: result.key }, null, 2)}
+              </pre>
+              <button
+                onClick={() =>
+                  copy(
+                    JSON.stringify(
+                      { ServerURL: result.server_url, AuthKey: result.key },
+                      null,
+                      2,
+                    ),
+                  )
+                }
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg"
+              >
+                {t("Copy config")}
+              </button>
+              <p className="text-xs text-slate-500">{t("Android note")}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card p-4">
         <h3 className="text-sm font-medium text-slate-200 mb-3">
           {t("Invitation ledger")}
         </h3>
@@ -332,4 +383,52 @@ export default function Invite() {
       </div>
     </div>
   );
+}
+
+function uuidv4(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// buildMobileConfig produces an Apple configuration profile (.mobileconfig) that
+// points the Tailscale iOS/iPadOS app at this Headscale control server and
+// auto-joins with the embedded auth key. Installable without MDM; the app reads
+// the managed config from the profile.
+function buildMobileConfig(serverURL: string, authKey: string): string {
+  const payloadUUID = uuidv4();
+  const profileUUID = uuidv4();
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>com.tailscale.ipn</string>
+      <key>PayloadIdentifier</key>
+      <string>${payloadUUID}</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>ServerURL</key>
+      <string>${serverURL}</string>
+      <key>AuthKey</key>
+      <string>${authKey}</string>
+    </dict>
+  </array>
+  <key>PayloadDisplayName</key>
+  <string>内网 VPN 接入</string>
+  <key>PayloadIdentifier</key>
+  <string>${profileUUID}</string>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadUUID</key>
+  <string>${profileUUID}</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+</dict>
+</plist>`;
 }

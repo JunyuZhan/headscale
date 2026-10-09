@@ -7,15 +7,12 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    setBusy(true);
     api
       .listUsers()
       .then((r) => setUsers(r.users))
-      .catch((e) => setError(e.message))
-      .finally(() => setBusy(false));
+      .catch((e) => setError(e.message));
   }, []);
 
   useEffect(() => load(), [load]);
@@ -40,41 +37,58 @@ export default function Users() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-4">{t("Users")}</h1>
+      <h1 className="text-2xl font-semibold text-white">{t("Users")}</h1>
+      <p className="text-sm text-slate-400 mt-1 mb-5">
+        {t("Headscale users — each maps to a set of joinable devices.")}
+      </p>
+
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
-      <form onSubmit={create} className="flex gap-2 mb-4">
-        <input
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-sm text-slate-200 flex-1"
-          placeholder={t("New user name")}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+
+      <form
+        onSubmit={create}
+        className="card p-4 mb-5 flex flex-col sm:flex-row gap-3 sm:items-end"
+      >
+        <div className="flex-1">
+          <label className="block text-xs text-slate-400 mb-1">
+            {t("New user name")}
+          </label>
+          <input
+            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+            placeholder={t("New user name")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
         <button
           type="submit"
-          className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-1.5 rounded text-sm"
+          className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           {t("Create")}
         </button>
       </form>
-      <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-800 text-slate-300">
-            <tr>
-              <th className="text-left p-3">{t("Name")}</th>
-              <th className="text-left p-3">{t("Display name")}</th>
-              <th className="text-left p-3">{t("Email")}</th>
-              <th className="text-left p-3">{t("Actions")}</th>
+          <thead>
+            <tr className="bg-slate-800/60 text-slate-400 text-left">
+              <th className="p-3 font-medium">{t("Name")}</th>
+              <th className="p-3 font-medium">{t("Display name")}</th>
+              <th className="p-3 font-medium">{t("Email")}</th>
+              <th className="p-3 font-medium text-right">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-t border-slate-800">
-                <td className="p-3 text-slate-200">{u.name}</td>
+              <tr
+                key={u.id}
+                className="border-t border-slate-800 hover:bg-slate-800/40 transition-colors"
+              >
+                <td className="p-3 text-slate-200 font-medium">{u.name}</td>
                 <td className="p-3 text-slate-400">{u.displayName ?? "—"}</td>
                 <td className="p-3 text-slate-400">{u.email ?? "—"}</td>
-                <td className="p-3">
+                <td className="p-3 text-right">
                   <button
-                    className="text-red-400 hover:underline"
+                    className="text-red-300 hover:bg-red-500/15 px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() => {
                       if (window.confirm(`${t("Delete user")} ${u.name}？`))
                         run(t("Delete failed"), () => api.deleteUser(u.id));
@@ -87,7 +101,7 @@ export default function Users() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-slate-500">
+                <td colSpan={4} className="p-6 text-center text-slate-500">
                   {t("No users")}
                 </td>
               </tr>
@@ -95,7 +109,6 @@ export default function Users() {
           </tbody>
         </table>
       </div>
-      {busy && <div className="text-slate-500 text-sm mt-2">{t("Loading…")}</div>}
     </div>
   );
 }

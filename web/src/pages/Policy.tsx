@@ -313,7 +313,7 @@ export default function Policy() {
           <select
             value={action}
             onChange={(e) => setAction(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200"
+            className="focus-ring bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200"
           >
             <option value="accept">{t("accept")}</option>
             <option value="deny">{t("deny")}</option>
@@ -322,14 +322,14 @@ export default function Policy() {
             placeholder="src: group:admins,*"
             value={src}
             onChange={(e) => setSrc(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200 flex-1 min-w-[12rem]"
+            className="focus-ring bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 flex-1 min-w-[12rem]"
           />
           <span className="text-slate-400">→</span>
           <input
             placeholder="dst: tag:server:80"
             value={dst}
             onChange={(e) => setDst(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded p-1.5 text-slate-200 flex-1 min-w-[12rem]"
+            className="focus-ring bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 flex-1 min-w-[12rem]"
           />
           <button
             onClick={addRule}

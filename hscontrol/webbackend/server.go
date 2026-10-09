@@ -576,6 +576,27 @@ func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 
 // handleProxy forwards to Headscale's /api/v1, injecting the server-side key and
 // enforcing role-based scoping so a non-admin can only touch their own user.
+// proxyAllowed restricts the generic Headscale proxy to the exact endpoints the
+// web UI needs. Anything else (api keys, tailnet settings, DERP config, …) is
+// rejected with 403 so a compromised session cannot drive the full Headscale
+// API through the web backend. Role scoping in preprocessProxy still applies on
+// top of this for non-admin users.
+func proxyAllowed(method, rest string) bool {
+	switch method {
+	case http.MethodGet:
+		return rest == "/node" || strings.HasPrefix(rest, "/node/") ||
+			rest == "/user" || strings.HasPrefix(rest, "/user/") ||
+			rest == "/preauthkey" || rest == "/policy"
+	case http.MethodPost:
+		return rest == "/preauthkey" || rest == "/preauthkey/expire" || rest == "/policy/check"
+	case http.MethodPut:
+		return rest == "/policy"
+	case http.MethodDelete:
+		return rest == "/preauthkey" || strings.HasPrefix(rest, "/user/")
+	}
+	return false
+}
+
 func (s *Server) handleProxy() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := userFromContext(r.Context())
@@ -583,6 +604,12 @@ func (s *Server) handleProxy() http.HandlerFunc {
 		if !strings.HasPrefix(rest, "/") {
 			rest = "/" + rest
 		}
+
+		if !proxyAllowed(r.Method, rest) {
+			writeError(w, http.StatusForbidden, "forbidden: proxy endpoint not allowed")
+			return
+		}
+
 		target := strings.TrimRight(s.cfg.HeadscaleURL, "/") + "/api/v1" + rest
 
 		if err := s.preprocessProxy(r, rest, u.HeadscaleUser, u.Role == "admin"); err != nil {
