@@ -110,13 +110,13 @@ export default function Nodes() {
                 key={n.id}
                 className="border-t border-slate-800 hover:bg-slate-800/40 transition-colors"
               >
-                <td className="p-3 text-slate-200 font-medium">{n.name}</td>
+                <td className="p-3 text-slate-200 font-medium">{n.givenName ?? n.name}</td>
                 <td className="p-3 text-slate-400">{n.user?.name ?? "—"}</td>
                 <td className="p-3 text-slate-400 font-mono text-xs">
                   {(n.addresses ?? []).join(", ") || "—"}
                 </td>
                 <td className="p-3">
-                  <StatusDot online={!!n.connected} />
+                  <StatusDot online={!!(n.online ?? n.connected)} />
                 </td>
                 <td className="p-3 text-slate-400 text-xs">{fmt(n.lastSeen)}</td>
                 <td className="p-3 text-slate-400 text-xs">
@@ -126,7 +126,10 @@ export default function Nodes() {
                   <Action
                     label={t("Rename")}
                     onClick={() => {
-                      const name = window.prompt(t("New name"), n.name);
+                      const name = window.prompt(
+                        t("New name"),
+                        n.givenName ?? n.name,
+                      );
                       if (name)
                         run(t("Rename failed"), () => api.renameNode(n.id, name));
                     }}
@@ -155,7 +158,11 @@ export default function Nodes() {
                     label={t("Revoke device")}
                     tone="red"
                     onClick={() => {
-                      if (window.confirm(`${t("Revoke node")} ${n.name}？`))
+                      if (
+                        window.confirm(
+                          `${t("Revoke node")} ${n.givenName ?? n.name}？`,
+                        )
+                      )
                         run(t("Delete failed"), () => api.deleteNode(n.id));
                     }}
                   />

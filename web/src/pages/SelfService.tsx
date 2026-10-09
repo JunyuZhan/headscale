@@ -7,6 +7,8 @@ import { buildMobileConfig, buildAndroidConfig } from "../lib/mobileconfig";
 interface NodeRow {
   id?: string;
   name?: string;
+  givenName?: string;
+  online?: boolean;
   connected?: boolean;
   lastSeen?: string;
   addresses?: string[];
@@ -125,12 +127,12 @@ export default function SelfService() {
                 <tbody className="text-slate-300">
                   {nodes.map((n, i) => (
                     <tr key={n.id ?? i} className="border-t border-slate-800">
-                      <td className="py-1 pr-3">{n.name ?? "—"}</td>
+                      <td className="py-1 pr-3">{n.givenName ?? n.name ?? "—"}</td>
                       <td className="py-1 pr-3 font-mono">
                         {(n.addresses ?? []).join(", ")}
                       </td>
                       <td className="py-1 pr-3">
-                        {n.connected ? (
+                        {n.online ?? n.connected ? (
                           <span className="text-emerald-400">{t("online")}</span>
                         ) : (
                           <span className="text-slate-500">{t("offline")}</span>

@@ -23,7 +23,9 @@ export interface User {
 export interface Node {
   id: string;
   name: string;
+  givenName?: string;
   user?: User | null;
+  online?: boolean;
   connected?: boolean;
   lastSeen?: string;
   expiry?: string;
