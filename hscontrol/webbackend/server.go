@@ -17,14 +17,17 @@ package webbackend
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
+	"net/smtp"
 	"os"
 	"strconv"
 	"strings"
@@ -103,11 +106,22 @@ type Config struct {
 	CookieSecure     bool
 	ServerURL        string // public base URL used to build client join commands
 
-	// Email (Resend). Emails are best-effort: a send failure is logged but
-	// never fails the triggering action.
-	ResendAPIKey   string // RESEND_API_KEY; empty disables all email sending
+	// Email. Emails are best-effort: a send failure is logged but never fails
+	// the triggering action. When SMTPHost is set, mail is delivered via SMTP
+	// (Resend or any SMTP server); otherwise the Resend REST API is used as a
+	// fallback when RESEND_API_KEY is set. Empty of both => email disabled.
+	ResendAPIKey   string // RESEND_API_KEY; REST fallback when SMTP not configured
 	ResendFrom     string // default "Headscale <no-reply@sclink.dev>"
 	ResendNotifyTo string // comma-separated fallback recipients for alerts
+
+	// SMTP delivery. For Resend SMTP: host smtp.resend.com, port 587,
+	// username "resend", password = your Resend API key, TLS = starttls.
+	SMTPHost     string // e.g. smtp.resend.com
+	SMTPPort     string // default "587"
+	SMTPUsername string // e.g. "resend" (Resend literal username)
+	SMTPPassword string // for Resend this is the API key
+	SMTPFrom     string // envelope/from address (must be a verified domain)
+	SMTPTLS      string // "starttls" (default, port 587) | "ssl" (implicit TLS, port 465)
 }
 
 func LoadConfig() *Config {
@@ -123,6 +137,12 @@ func LoadConfig() *Config {
 		ResendAPIKey:    os.Getenv("RESEND_API_KEY"),
 		ResendFrom:      getenv("RESEND_FROM", "Headscale <no-reply@sclink.dev>"),
 		ResendNotifyTo:  os.Getenv("RESEND_NOTIFY_TO"),
+		SMTPHost:        os.Getenv("SMTP_HOST"),
+		SMTPPort:        getenv("SMTP_PORT", "587"),
+		SMTPUsername:    os.Getenv("SMTP_USERNAME"),
+		SMTPPassword:    os.Getenv("SMTP_PASSWORD"),
+		SMTPFrom:        os.Getenv("SMTP_FROM"),
+		SMTPTLS:         getenv("SMTP_TLS", "starttls"),
 	}
 	return c
 }
@@ -909,9 +929,23 @@ func (s *Server) recordEvent(r *http.Request, eventType, target, detail string) 
 	}
 }
 
-// sendEmail delivers a single email via Resend. Best-effort: failures are
-// logged but never returned to the caller so they cannot break the action.
+// sendEmail delivers a single email. When SMTP is configured it is used;
+// otherwise the Resend REST API is used as a fallback. Best-effort: failures
+// are logged but never returned to the caller so they cannot break the action.
 func (s *Server) sendEmail(to, subject, htmlBody string) {
+	if s.cfg.SMTPHost != "" {
+		s.sendEmailSMTP(to, subject, htmlBody)
+		return
+	}
+	if s.cfg.ResendAPIKey != "" {
+		s.sendEmailResend(to, subject, htmlBody)
+		return
+	}
+	log.Printf("webbackend: email skipped (no SMTP_HOST and no RESEND_API_KEY): %s -> %s", to, subject)
+}
+
+// sendEmailResend delivers via the Resend REST API (fallback path).
+func (s *Server) sendEmailResend(to, subject, htmlBody string) {
 	key := s.cfg.ResendAPIKey
 	if key == "" {
 		log.Printf("webbackend: email skipped (RESEND_API_KEY not set): %s -> %s", to, subject)
@@ -941,7 +975,98 @@ func (s *Server) sendEmail(to, subject, htmlBody string) {
 		log.Printf("webbackend: email send failed (%d): %s", resp.StatusCode, string(b))
 		return
 	}
-	log.Printf("webbackend: email sent to %s: %s", to, subject)
+	log.Printf("webbackend: email sent (resend api) to %s: %s", to, subject)
+}
+
+// sendEmailSMTP delivers via an SMTP server (preferred path). It supports both
+// STARTTLS (port 587, default) and implicit TLS (port 465). For Resend the
+// username is the literal "resend" and the password is the API key.
+func (s *Server) sendEmailSMTP(to, subject, htmlBody string) {
+	from := s.cfg.SMTPFrom
+	if from == "" {
+		from = s.cfg.ResendFrom
+	}
+	if from == "" {
+		from = "no-reply@sclink.dev"
+	}
+	host := s.cfg.SMTPHost
+	addr := net.JoinHostPort(host, s.cfg.SMTPPort)
+
+	var c *smtp.Client
+	var err error
+	if s.cfg.SMTPTLS == "ssl" {
+		tlsConn, derr := tls.Dial("tcp", addr, &tls.Config{ServerName: host})
+		if derr != nil {
+			log.Printf("webbackend: smtp ssl dial error: %v", derr)
+			return
+		}
+		c, err = smtp.NewClient(tlsConn, host)
+	} else {
+		c, err = smtp.Dial(addr)
+		if err != nil {
+			log.Printf("webbackend: smtp dial error: %v", err)
+			return
+		}
+		if ok, _ := c.Extension("STARTTLS"); ok {
+			if terr := c.StartTLS(&tls.Config{ServerName: host}); terr != nil {
+				log.Printf("webbackend: smtp starttls error: %v", terr)
+				c.Close()
+				return
+			}
+		}
+	}
+	defer c.Close()
+
+	if s.cfg.SMTPUsername != "" {
+		pass := s.cfg.SMTPPassword
+		if pass == "" {
+			pass = s.cfg.ResendAPIKey // reuse Resend key if SMTP_PASSWORD unset
+		}
+		auth := smtp.PlainAuth("", s.cfg.SMTPUsername, pass, host)
+		if aerr := c.Auth(auth); aerr != nil {
+			log.Printf("webbackend: smtp auth error: %v", aerr)
+			return
+		}
+	}
+	if err := c.Mail(from); err != nil {
+		log.Printf("webbackend: smtp mail-from error: %v", err)
+		return
+	}
+	if err := c.Rcpt(to); err != nil {
+		log.Printf("webbackend: smtp rcpt error: %v", err)
+		return
+	}
+	w, err := c.Data()
+	if err != nil {
+		log.Printf("webbackend: smtp data error: %v", err)
+		return
+	}
+	msg := buildMailMessage(from, to, subject, htmlBody)
+	if _, err := w.Write([]byte(msg)); err != nil {
+		log.Printf("webbackend: smtp write error: %v", err)
+		return
+	}
+	if err := w.Close(); err != nil {
+		log.Printf("webbackend: smtp close error: %v", err)
+		return
+	}
+	log.Printf("webbackend: smtp email sent to %s: %s", to, subject)
+}
+
+// buildMailMessage assembles a minimal RFC 5322 message with an HTML body and
+// an RFC 2047 encoded subject so non-ASCII (e.g. Chinese) subjects render.
+func buildMailMessage(from, to, subject, htmlBody string) string {
+	var b strings.Builder
+	b.WriteString("From: " + from + "\r\n")
+	b.WriteString("To: " + to + "\r\n")
+	b.WriteString("Subject: " + mime.QEncoding.Encode("UTF-8", subject) + "\r\n")
+	b.WriteString("MIME-Version: 1.0\r\n")
+	b.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
+	b.WriteString("Date: " + time.Now().Format(time.RFC1123Z) + "\r\n")
+	b.WriteString("\r\n")
+	b.WriteString(htmlBody)
+	b.WriteString("\r\n")
+	return b.String()
 }
 
 // alertRecipients returns the addresses that should receive administrative
@@ -1063,7 +1188,7 @@ func (s *Server) recordProxyEvent(r *http.Request, rest string) {
 // Resend is configured, so the reliability trail works even without email.
 func (s *Server) startWatcher() {
 	if s.cfg.ResendAPIKey == "" {
-		log.Printf("webbackend: email alerts disabled (RESEND_API_KEY not set); watcher still records join/offline events")
+		log.Printf("webbackend: email alerts disabled (no SMTP_HOST and no RESEND_API_KEY); watcher still records join/offline events")
 	}
 	go func() {
 		ticker := time.NewTicker(60 * time.Second)

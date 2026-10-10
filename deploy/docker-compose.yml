@@ -33,6 +33,12 @@ services:
       RESEND_API_KEY: "${RESEND_API_KEY}"            # empty disables email alerts
       RESEND_FROM: "${RESEND_FROM:-Headscale <no-reply@sclink.dev>}"
       RESEND_NOTIFY_TO: "${RESEND_NOTIFY_TO}"        # comma-separated alert recipients
+      SMTP_HOST: "${SMTP_HOST}"                      # e.g. smtp.resend.com (empty => use REST API)
+      SMTP_PORT: "${SMTP_PORT:-587}"                 # 587 starttls | 465 ssl
+      SMTP_USERNAME: "${SMTP_USERNAME}"              # Resend literal username: "resend"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-${RESEND_API_KEY}}"  # Resend: API key (reuses RESEND_API_KEY if unset)
+      SMTP_FROM: "${SMTP_FROM:-noreply@sclink.dev}"  # must be a verified domain
+      SMTP_TLS: "${SMTP_TLS:-starttls}"              # starttls (587) | ssl (465)
       HEADSCALE_PUBLIC_URL: "https://${DOMAIN}"
     volumes:
       - webui_data:/var/lib/webui
