@@ -375,6 +375,8 @@ func (s *Server) Handler() http.Handler {
 		protected.Route("/ui/api/admin/invites", func(rt chi.Router) {
 			rt.Use(middlewareOf(s.requireAdmin))
 			rt.Get("/", s.handleListInvites)
+			rt.Post("/purge-expired", s.handlePurgeExpiredInvites)
+			rt.Delete("/{id}", s.handleDeleteInvite)
 		})
 
 		// Admin-only audit log.
@@ -711,6 +713,34 @@ func (s *Server) handleListInvites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, invites)
+}
+
+// handleDeleteInvite removes a single ledger row (housekeeping of stale/test
+// invites). It does not touch the underlying Headscale pre-auth key.
+func (s *Server) handleDeleteInvite(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if _, err := strconv.Atoi(id); err != nil {
+		writeError(w, http.StatusBadRequest, "bad id")
+		return
+	}
+	if err := s.db.Delete(&Invite{}, id).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	s.recordEvent(r, "delete_invite", id, "")
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handlePurgeExpiredInvites removes all ledger rows whose invitation has
+// expired (a convenience so the ledger does not accumulate stale entries).
+func (s *Server) handlePurgeExpiredInvites(w http.ResponseWriter, r *http.Request) {
+	res := s.db.Where("expires_at < ?", time.Now()).Delete(&Invite{})
+	if res.Error != nil {
+		writeError(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	s.recordEvent(r, "purge_invites", "", strconv.FormatInt(res.RowsAffected, 10)+" rows")
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "removed": res.RowsAffected})
 }
 
 // ---- self-service ---------------------------------------------------------

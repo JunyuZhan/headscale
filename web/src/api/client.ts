@@ -306,6 +306,12 @@ export const api = {
 // Web-backend admin-only endpoints (require the session cookie + admin role).
 export const admin = {
   listInvites: () => backendFetch<Invite[]>("/admin/invites"),
+  deleteInvite: (id: number) =>
+    backendFetch<{ ok: boolean }>(`/admin/invites/${id}`, { method: "DELETE" }),
+  purgeExpiredInvites: () =>
+    backendFetch<{ ok: boolean; removed: number }>("/admin/invites/purge-expired", {
+      method: "POST",
+    }),
   events: () => backendFetch<Event[]>("/admin/events"),
   webUsers: () => backendFetch<WebUser[]>("/admin/webusers"),
   createWebUser: (u: {

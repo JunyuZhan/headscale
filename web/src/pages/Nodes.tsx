@@ -36,6 +36,7 @@ export default function Nodes() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showExpired, setShowExpired] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -79,6 +80,9 @@ export default function Nodes() {
       !nodeNames.has((iv.hostname || "").toLowerCase()),
   );
   const pendingHostnames = new Set(pending.map((p) => p.hostname));
+  const expiredCount = invites.filter(
+    (iv) => new Date(iv.expires_at).getTime() <= Date.now(),
+  ).length;
 
   const run = async (msg: string, fn: () => Promise<unknown>) => {
     setError("");
@@ -259,13 +263,40 @@ export default function Nodes() {
 
       {isAdmin && invites.length > 0 && (
         <div className="card p-4 mt-5">
-          <h3 className="text-sm font-medium text-slate-200 mb-1">
-            {t("Invite record")}
-          </h3>
-          <p className="text-xs text-slate-500 mb-3">
-            {t("Invited, not yet joined — the device will appear above once it joins.")}
-          </p>
-          <div className="overflow-auto">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div>
+              <h3 className="text-sm font-medium text-slate-200">
+                {t("Invite record")}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t("Invited, not yet joined — the device will appear above once it joins.")}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {expiredCount > 0 && (
+                <>
+                  <button
+                    onClick={() => setShowExpired((v) => !v)}
+                    className="text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+                  >
+                    {showExpired
+                      ? t("Hide expired")
+                      : `${t("Show expired")} (${expiredCount})`}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`${t("Clear expired invites")}？`))
+                        run(t("Clear failed"), () => admin.purgeExpiredInvites());
+                    }}
+                    className="text-xs text-amber-300 border border-amber-500/40 rounded-lg px-2.5 py-1.5 hover:bg-amber-500/15 transition-colors"
+                  >
+                    {t("Clear expired")}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="overflow-auto mt-3">
             <table className="w-full text-sm">
               <thead className="text-slate-400">
                 <tr className="text-left">
@@ -276,32 +307,57 @@ export default function Nodes() {
                   <th className="py-1 pr-3">{t("Target user")}</th>
                   <th className="py-1 pr-3">{t("By")}</th>
                   <th className="py-1 pr-3">{t("Expires")}</th>
-                  <th className="py-1">{t("Status")}</th>
+                  <th className="py-1 pr-3">{t("Status")}</th>
+                  <th className="py-1 text-right">{t("Actions")}</th>
                 </tr>
               </thead>
               <tbody className="text-slate-300">
-                {invites.map((iv) => {
-                  const expired = new Date(iv.expires_at).getTime() <= Date.now();
-                  const label = expired
-                    ? t("已过期")
-                    : pendingHostnames.has(iv.hostname)
-                      ? t("Pending join")
-                      : t("已使用");
-                  return (
-                    <tr key={iv.id} className="border-t border-slate-800">
-                      <td className="py-1 pr-3">{iv.applicant || "—"}</td>
-                      <td className="py-1 pr-3">{iv.device_desc || "—"}</td>
-                      <td className="py-1 pr-3">{iv.org || "—"}</td>
-                      <td className="py-1 pr-3">{iv.hostname || "—"}</td>
-                      <td className="py-1 pr-3">{iv.target_user}</td>
-                      <td className="py-1 pr-3">{iv.created_by}</td>
-                      <td className="py-1 pr-3">
-                        {fmt(iv.expires_at).slice(0, 16)}
-                      </td>
-                      <td className="py-1">{label}</td>
-                    </tr>
-                  );
-                })}
+                {invites
+                  .filter(
+                    (iv) =>
+                      showExpired ||
+                      new Date(iv.expires_at).getTime() > Date.now(),
+                  )
+                  .map((iv) => {
+                    const expired =
+                      new Date(iv.expires_at).getTime() <= Date.now();
+                    const label = expired
+                      ? t("已过期")
+                      : pendingHostnames.has(iv.hostname)
+                        ? t("Pending join")
+                        : t("已使用");
+                    return (
+                      <tr
+                        key={iv.id}
+                        className={`border-t border-slate-800 ${
+                          expired ? "opacity-50" : ""
+                        }`}
+                      >
+                        <td className="py-1 pr-3">{iv.applicant || "—"}</td>
+                        <td className="py-1 pr-3">{iv.device_desc || "—"}</td>
+                        <td className="py-1 pr-3">{iv.org || "—"}</td>
+                        <td className="py-1 pr-3">{iv.hostname || "—"}</td>
+                        <td className="py-1 pr-3">{iv.target_user}</td>
+                        <td className="py-1 pr-3">{iv.created_by}</td>
+                        <td className="py-1 pr-3 whitespace-nowrap">
+                          {fmt(iv.expires_at).slice(0, 16)}
+                        </td>
+                        <td className="py-1 pr-3 whitespace-nowrap">{label}</td>
+                        <td className="py-1 text-right">
+                          <button
+                            onClick={() =>
+                              run(t("Delete failed"), () =>
+                                admin.deleteInvite(iv.id),
+                              )
+                            }
+                            className="text-red-300 hover:bg-red-500/15 px-2 py-0.5 rounded-md text-xs transition-colors"
+                          >
+                            {t("Delete")}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

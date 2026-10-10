@@ -154,6 +154,11 @@ const zh: Record<string, string> = {
     "作为节点名（仅 ASCII，例如 zhangsan-laptop）",
   "Invitation ledger": "邀请台账",
   "Invite record": "邀请记录",
+  "Show expired": "显示已过期",
+  "Hide expired": "隐藏已过期",
+  "Clear expired": "清除已过期",
+  "Clear expired invites": "确定清除所有已过期的邀请记录",
+  "Clear failed": "清除失败",
   "Invited, not yet joined — the device will appear above once it joins.":
     "已发出邀请、尚未加入——设备上线后会自动出现在上方节点列表。",
   "Add device": "添加设备",
