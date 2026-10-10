@@ -32,19 +32,28 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 
 ### 认证与账号体系
 - 登录页 + 登出 + `/me` 查询（会话 Cookie `HttpOnly`，默认 12h 过期）。
+- **★ 两层"用户"概念必须分清**（极易混淆）：
+  - **Headscale 用户**（`/users` 页）＝ VPN **命名空间**，字段 `name`（机器标识，ACL/入网命令用）/`displayName`（显示名）/`email`/头像；**没有密码**，设备靠**预授权密钥**入网。
+  - **控制台账号**（`/accounts` 页）＝ 登录本网页的账号，含**用户名/密码（bcrypt）/角色/绑定 Headscale 用户**。二者不是一回事。
 - 两类角色：`admin`（看全部）、`user`（映射到一个 Headscale 用户，只能碰自己的资源）。
-- 后台账号管理（仅 admin）：列出 / 创建 / 删除 Web 登录账号（用户名、密码、绑定 Headscale 用户、角色）。
-- 首次启动用 `WEBUI_BOOTSTRAP_ADMIN` 自动建初始管理员。
+- **控制台账号管理（admin，`/accounts`）**：列出 / 创建（账号名、密码、邮箱、角色、绑定 Headscale 用户）/ **重置密码** / 删除。
+- 首次启动用 `WEBUI_BOOTSTRAP_ADMIN` 自动建初始管理员（线上目前仅 `admin` 一个控制台账号）。
+- 自助改密码：Layout 用户菜单「修改密码」（改后注销该账号全部会话）。
 
 ### 概览 Dashboard
-- 统计卡片：节点数、密钥数；admin 额外看用户数。
+- 统计卡片：节点数、在线数、密钥数；admin 额外看用户数。
 
 ### 节点管理（`/nodes`）
 - 列表：名称、所属用户、地址、在线状态、最近活跃、标签。
-- 操作：**改名、设标签、过期（expire）、删除**。
+- 操作：**改名、设标签、过期（expire）、删除（吊销设备）**。
+- **实时**：右上角「实时」指示，设备上下线自动刷新（SSE）。
 
 ### 用户管理（admin，`/users`）
-- 列出（名称 / 显示名 / 邮箱）、**创建、删除** Headscale 用户。
+- 列出（名称 / 显示名 / 邮箱）、**创建**（可填名称+显示名称+邮箱）、**删除** Headscale 用户。
+
+### 站内通知（顶栏铃铛）
+- 未读红点计数 + 下拉列表（最近 30 条）+ 新事件实时 Toast（6s）+ 「全部已读」。
+- 管理员收全部事件；普通用户仅收自己的。基于审计 Event 表 + SSE（`/ui/api/events/stream`）。
 
 ### 预授权密钥（admin，`/keys`）
 - 列出、新建（用户 / 可复用 / 临时 / 过期时间 / ACL tags）、**过期、删除**；密钥只显示一次。
@@ -83,6 +92,10 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 | `623ee152` | **修复节点「地址」列全空**：Headscale `/api/v1/node` 返回字段是 **`ipAddresses`（驼峰）**，前端却读 `n.addresses`（永不填充）→ 地址列恒为「—」。修复：`client.ts` Node 接口补 `ipAddresses`；Nodes/SelfService 渲染改为 `(n.ipAddresses ?? n.addresses)`。 |
 | `b417817d` | **修复「创建用户」403**：`proxyAllowed()` 的 POST 分支漏了 `rest == "/user"`，前端「创建用户」恒返回 403。修复：POST 分支补 `/user`。线上实测修复前 403 → 修复后 200。 |
 | `4ace25c1` | **站内通知（铃铛未读红点 + 下拉列表 + 实时 Toast）**：① 后端新增 SSE 事件 hub（`broadcastEvent` 在 `recordEvent` 落库后广播 Event）+ 端点 `GET /ui/api/events/stream`（管理员收全部、普通用户仅收自己）；② 前端新增 `useEventStream.ts` + `Notifications.tsx`（顶栏铃铛 + 未读红点计数 + 下拉 30 条 + 新事件实时 Toast + 「全部已读」，未读基于 localStorage 与事件 id 比较）。 |
+| `623ee152` | **修复节点「地址」列全空**（`ipAddresses` vs `addresses`）。 |
+| `b417817d` | **修复「创建用户」403**（`proxyAllowed` 漏 `POST /user`）。 |
+| `013ea13b` | **登录事件 actor 记实名**（此前恒 `anonymous`，连带修复普通用户收不到自己登录通知）+ **创建 Headscale 用户支持显示名称/邮箱**（此前表单只有 name 一个框）。 |
+| `af8424e7` | **新增「控制台账号」管理页**：区分「Headscale 用户＝VPN 命名空间（无密码）」与「控制台账号＝登录网页的账号（有密码/角色/绑定 Headscale 用户）」。前端补齐创建/重置密码/删除；后端 `/ui/api/admin/webusers` 接口早已存在。 |
 
 #### 2026-10-10 真机验证要点（五轮自检）
 本轮在 debian/hk/aly/VPS 真实组网环境完成 5 轮、每轮落实验证，核心结论：
