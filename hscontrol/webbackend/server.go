@@ -548,7 +548,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "session error")
 		return
 	}
-	s.recordEvent(r, "login", body.Username, "")
+	s.recordEventAs(u.Username, clientIP(r), "login", body.Username, "")
 	writeJSON(w, http.StatusOK, map[string]any{"username": u.Username, "role": u.Role, "headscale_user": u.HeadscaleUser})
 }
 
@@ -1053,6 +1053,17 @@ func (s *Server) recordEvent(r *http.Request, eventType, target, detail string) 
 		} else {
 			actor = "anonymous"
 		}
+	}
+	s.recordEventAs(actor, ip, eventType, target, detail)
+}
+
+// recordEventAs writes an audit event with an explicitly known actor. Used for
+// events where the session is not yet available in the request (e.g. a
+// successful login, where the cookie is only set on the response) so the actor
+// is recorded accurately instead of "anonymous".
+func (s *Server) recordEventAs(actor, ip, eventType, target, detail string) {
+	if actor == "" {
+		actor = "system"
 	}
 	ev := Event{Time: time.Now(), Actor: actor, Type: eventType, Target: target, Detail: detail, IP: ip}
 	if err := s.db.Create(&ev).Error; err != nil {

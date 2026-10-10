@@ -244,10 +244,14 @@ export const api = {
     }),
 
   listUsers: () => apiFetch<{ users: User[] }>("/user"),
-  createUser: (name: string) =>
+  createUser: (name: string, displayName?: string, email?: string) =>
     apiFetch<{ user: User }>("/user", {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        ...(displayName ? { displayName } : {}),
+        ...(email ? { email } : {}),
+      }),
     }),
   deleteUser: (id: string) =>
     apiFetch<void>(`/user/${id}`, { method: "DELETE" }),

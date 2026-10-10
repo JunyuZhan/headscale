@@ -6,6 +6,8 @@ export default function Users() {
   const { t } = useI18n();
   const [users, setUsers] = useState<User[]>([]);
   const [name, setName] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(() => {
@@ -31,8 +33,12 @@ export default function Users() {
     e.preventDefault();
     const value = name.trim();
     if (!value) return;
-    await run(t("Create failed"), () => api.createUser(value));
+    await run(t("Create failed"), () =>
+      api.createUser(value, displayName.trim(), email.trim()),
+    );
     setName("");
+    setDisplayName("");
+    setEmail("");
   };
 
   return (
@@ -44,27 +50,53 @@ export default function Users() {
 
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
 
-      <form
-        onSubmit={create}
-        className="card p-4 mb-5 flex flex-col sm:flex-row gap-3 sm:items-end"
-      >
-        <div className="flex-1">
-          <label className="block text-xs text-slate-400 mb-1">
-            {t("New user name")}
-          </label>
-          <input
-            className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
-            placeholder={t("New user name")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+      <form onSubmit={create} className="card p-4 mb-5 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              {t("New user name")}
+            </label>
+            <input
+              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+              placeholder="owner"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <p className="text-[11px] text-slate-500 mt-1">
+              {t("Machine id used in ACLs and join commands")}
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              {t("Display name")}
+            </label>
+            <input
+              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+              placeholder={t("e.g. real name / nickname")}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              {t("Email")}
+            </label>
+            <input
+              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+              placeholder="user@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
         </div>
-        <button
-          type="submit"
-          className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          {t("Create")}
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            {t("Create")}
+          </button>
+        </div>
       </form>
 
       <div className="card overflow-hidden">
