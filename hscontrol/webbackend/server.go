@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -201,6 +202,14 @@ type Server struct {
 	// overridable from the web console without restarting the process).
 	mailMu sync.RWMutex
 	mail   *MailSettings
+
+	// SSE node-stream hub: a lightweight poller watches the node set / online
+	// state and signals every subscribed browser so the UI refreshes without a
+	// manual reload. Channels are buffered (size 1) and signalled
+	// non-blockingly, so a slow client can never stall the broadcaster.
+	sseMu      sync.Mutex
+	sseClients map[chan struct{}]bool
+	sseSig     string // last broadcast signature ("id:online,...")
 }
 
 func NewServer(cfg *Config) (*Server, error) {
@@ -228,6 +237,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		knownOnline:  map[string]bool{},
 		notifiedKeys: map[string]bool{},
 		mail:         &MailSettings{},
+		sseClients:   map[chan struct{}]bool{},
 	}
 
 	if err := s.bootstrap(); err != nil {
@@ -380,6 +390,10 @@ func (s *Server) Handler() http.Handler {
 		protected.Post("/ui/api/me/password", s.handleChangePassword)
 		protected.Get("/ui/api/me/events", s.handleMyEvents)
 
+		// Server-sent events: pushes a signal whenever the node set or any
+		// node's online state changes, so the console can auto-refresh.
+		protected.Get("/ui/api/nodes/stream", s.handleNodeStream)
+
 		// Generic proxy to Headscale /api/v1 with role-based scoping.
 		protected.Handle("/ui/api/proxy/*", s.handleProxy())
 	})
@@ -394,6 +408,7 @@ func (s *Server) Run() error {
 	}
 	log.Printf("webbackend: listening on %s", s.cfg.Listen)
 	s.startWatcher()
+	s.startNodeStream()
 	return http.Serve(ln, s.Handler())
 }
 
@@ -1398,6 +1413,130 @@ func (s *Server) startWatcher() {
 			s.scanKeys(true)
 		}
 	}()
+}
+
+// startNodeStream launches a lightweight poller that watches the node set and
+// each node's online state, and signals all subscribed SSE clients whenever it
+// changes. This lets the console refresh itself when devices join, leave or
+// flip online/offline — no external dependency, and it works even when email
+// alerts are disabled. Poll interval is short (5s) so "online" updates feel
+// near-real-time on a small self-hosted tailnet.
+func (s *Server) startNodeStream() {
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		s.broadcastNodeChanges()
+		for range ticker.C {
+			s.broadcastNodeChanges()
+		}
+	}()
+}
+
+// broadcastNodeChanges polls Headscale, computes a cheap signature of the node
+// set + online flags, and (only when it differs from the last broadcast)
+// signals every SSE subscriber.
+func (s *Server) broadcastNodeChanges() {
+	sig := s.nodeSignature()
+	if sig == "" {
+		return // Headscale unreachable / parse error; keep last signature
+	}
+	s.sseMu.Lock()
+	changed := sig != s.sseSig
+	if changed {
+		s.sseSig = sig
+	}
+	var clients []chan struct{}
+	if changed {
+		clients = make([]chan struct{}, 0, len(s.sseClients))
+		for ch := range s.sseClients {
+			clients = append(clients, ch)
+		}
+	}
+	s.sseMu.Unlock()
+	for _, ch := range clients {
+		select {
+		case ch <- struct{}{}:
+		default: // client not draining; skip (it will resync on next change)
+		}
+	}
+}
+
+// nodeSignature returns a stable string describing every node's id + online
+// state (sorted, so ordering never causes spurious "changes").
+func (s *Server) nodeSignature() string {
+	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(s.cfg.HeadscaleURL, "/")+"/api/v1/node", nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Authorization", "Bearer "+s.cfg.HeadscaleAPIKey)
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	var parsed struct {
+		Nodes []struct {
+			ID     string `json:"id"`
+			Online bool   `json:"online"`
+		} `json:"nodes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return ""
+	}
+	parts := make([]string, 0, len(parsed.Nodes))
+	for _, n := range parsed.Nodes {
+		parts = append(parts, n.ID+":"+strconv.FormatBool(n.Online))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
+}
+
+// handleNodeStream is the SSE endpoint. It authenticates via the session cookie
+// (EventSource sends same-origin cookies automatically), keeps the connection
+// open, and emits a "nodes" event whenever the broadcaster detects a change. A
+// periodic comment line keeps intermediaries from closing an idle stream.
+func (s *Server) handleNodeStream(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming unsupported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	// Tell nginx (host TLS terminator) not to buffer this response.
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	ch := make(chan struct{}, 1)
+	s.sseMu.Lock()
+	s.sseClients[ch] = true
+	s.sseMu.Unlock()
+	defer func() {
+		s.sseMu.Lock()
+		delete(s.sseClients, ch)
+		s.sseMu.Unlock()
+	}()
+
+	// Initial hello so the client can tell the stream is live.
+	fmt.Fprint(w, "event: hello\ndata: ok\n\n")
+	flusher.Flush()
+
+	keep := time.NewTicker(25 * time.Second)
+	defer keep.Stop()
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ch:
+			fmt.Fprint(w, "event: nodes\ndata: changed\n\n")
+			flusher.Flush()
+		case <-keep.C:
+			fmt.Fprint(w, ": keepalive\n\n")
+			flusher.Flush()
+		}
+	}
 }
 
 // scanNodes detects new nodes and offline transitions. When alert is false it

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type Node } from "../api/client";
 import { useI18n } from "../i18n";
+import { useNodeStream } from "../lib/useNodeStream";
 
 function StatusDot({ online }: { online: boolean }) {
   const { t } = useI18n();
@@ -43,6 +44,10 @@ export default function Nodes() {
 
   useEffect(() => load(), [load]);
 
+  // Live-update: the backend pushes a signal whenever a node joins/leaves or
+  // flips online/offline, so the table refreshes itself without a manual click.
+  useNodeStream(load, true);
+
   const run = async (msg: string, fn: () => Promise<unknown>) => {
     setError("");
     try {
@@ -82,13 +87,19 @@ export default function Nodes() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold text-white">{t("Nodes")}</h1>
-        <button
-          onClick={load}
-          disabled={busy}
-          className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
-        >
-          {t("Refresh")}
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 status-pulse" />
+            {t("Live")}
+          </span>
+          <button
+            onClick={load}
+            disabled={busy}
+            className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
+          >
+            {t("Refresh")}
+          </button>
+        </div>
       </div>
       {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
       <div className="card overflow-hidden">

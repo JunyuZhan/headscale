@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, type Me } from "../api/client";
 import { useI18n } from "../i18n";
+import { useNodeStream } from "../lib/useNodeStream";
 
 export default function Dashboard() {
   const me = useOutletContext<Me>();
@@ -14,7 +15,7 @@ export default function Dashboard() {
   } | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     const calls: Promise<unknown>[] = [api.listNodes(), api.listPreAuthKeys()];
     if (me.role === "admin") calls.push(api.listUsers());
     Promise.all(calls)
@@ -29,6 +30,11 @@ export default function Dashboard() {
       })
       .catch((e) => setError(String(e.message ?? e)));
   }, [me.role]);
+
+  useEffect(() => reload(), [reload]);
+
+  // Keep the online/total counters live as devices join/leave or flip state.
+  useNodeStream(reload, true);
 
   const cards = [
     {

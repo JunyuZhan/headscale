@@ -49,6 +49,7 @@ const zh: Record<string, string> = {
   Actions: "操作",
   online: "在线",
   offline: "离线",
+  Live: "实时",
   Rename: "重命名",
   Expire: "过期",
   Delete: "删除",
@@ -150,8 +151,7 @@ const zh: Record<string, string> = {
   "Change password failed": "修改密码失败",
 
   // Activity log (audit)
-  "Activity log": "活动日志",
-  "Time": "时间",
+  "Activity log": "活动日志",  "Time": "时间",
   "Actor": "操作者",
   "Event": "事件",
   "Target": "对象",
