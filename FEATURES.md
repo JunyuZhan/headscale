@@ -80,6 +80,9 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 | `d5abb16c` | **SMTP 发信支持**：新增 SMTP 通道（STARTTLS 587 / 隐式 TLS 465，Resend 用户名恒为 `resend`、密码=API key），配置 `SMTP_HOST` 时优先走 SMTP，否则回退 Resend REST；`SMTP_PASSWORD` 缺省复用 `RESEND_API_KEY`。本地用 Go `net/smtp` 对 `smtp.resend.com:587` 实跑 STARTTLS 握手（TLS1.3、证书 OK）+ 确认服务端提供 AUTH。 |
 | `e94ec0e8` | **邮件设置后台可配 + Dashboard 在线数修复 + 在线灯呼吸动画**：① 新增 `Setting` 表持久化邮件配置，启动从 env 播种进库（现有 `RESEND_API_KEY`/`SMTP_*` 部署无需改 `.env` 即沿用）；`GET/PUT /admin/settings/mail`（密码/密钥掩码、空值不覆盖）+ `POST /mail/test` 真实发测试信并回报成败；新增「邮件设置」页（admin 侧边栏：启用开关/SMTP/Resend/告警收件人/发送测试邮件）；② **修复 Dashboard 在线数恒为 0**（原用 `x.connected` → 改 `x.online ?? x.connected`）；③ 在线绿灯加 `.status-pulse` 呼吸动画。 |
 | `ca58ae66` | **节点列表 SSE 实时推送**：① 后端新增 SSE hub + `startNodeStream`（5s 轮询 Headscale `/api/v1/node`，按 `(id,online)` 签名变化才广播，非阻塞投递，慢客户端不影响广播）+ 端点 `GET /ui/api/nodes/stream`（复用会话 Cookie 鉴权、hello 事件、25s keepalive、`X-Accel-Buffering:no` 让 host nginx 不缓冲）；② 前端新增 `web/src/lib/useNodeStream.ts`（EventSource + 断线 5s 重连 + 卸载清理）；Nodes 页接入并加「实时」绿点指示，Dashboard 计数器随上下线自动刷新，无需手动点「刷新」。 |
+| `623ee152` | **修复节点「地址」列全空**：Headscale `/api/v1/node` 返回字段是 **`ipAddresses`（驼峰）**，前端却读 `n.addresses`（永不填充）→ 地址列恒为「—」。修复：`client.ts` Node 接口补 `ipAddresses`；Nodes/SelfService 渲染改为 `(n.ipAddresses ?? n.addresses)`。 |
+| `b417817d` | **修复「创建用户」403**：`proxyAllowed()` 的 POST 分支漏了 `rest == "/user"`，前端「创建用户」恒返回 403。修复：POST 分支补 `/user`。线上实测修复前 403 → 修复后 200。 |
+| `4ace25c1` | **站内通知（铃铛未读红点 + 下拉列表 + 实时 Toast）**：① 后端新增 SSE 事件 hub（`broadcastEvent` 在 `recordEvent` 落库后广播 Event）+ 端点 `GET /ui/api/events/stream`（管理员收全部、普通用户仅收自己）；② 前端新增 `useEventStream.ts` + `Notifications.tsx`（顶栏铃铛 + 未读红点计数 + 下拉 30 条 + 新事件实时 Toast + 「全部已读」，未读基于 localStorage 与事件 id 比较）。 |
 
 #### 2026-10-10 真机验证要点（五轮自检）
 本轮在 debian/hk/aly/VPS 真实组网环境完成 5 轮、每轮落实验证，核心结论：
@@ -115,6 +118,7 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 - **安全 + 可靠性套件**：✅ 已完成（`166037b1`）：审计日志 / 活动日志页、邮件告警（Resend + SMTP）、登录限流（5 次失败锁 15 分钟）、改密注销全部会话、节点上下线监控。
 - **邮件设置后台可配**：✅ 已完成（`e94ec0e8`）：「邮件设置」页（admin）可配置 SMTP/Resend/告警收件人 + 一键发测试邮件；配置持久化到 `Setting` 表，启动时从 env 播种。
 - **节点列表实时推送（SSE）**：✅ 已完成（`ca58ae66`）：`GET /ui/api/nodes/stream`，5s 轮询节点签名变化即推送，Nodes/Dashboard 自动刷新。
+- **站内通知**：✅ 已完成（`4ace25c1`）：顶栏铃铛 + 未读红点 + 下拉列表 + 实时 Toast（`GET /ui/api/events/stream`）。
 - **登录页等 UI 细节打磨**：⬜ 用户原则「先功能后美化」，仍排在功能完善之后（Dashboard/Nodes/Users/Keys/Policy 已统一美化，登录页等细化待做）。
 - **Exit Node 开关**：有人提需求再做（on-demand）。
 - **节点审批**：已决定**不做**（采用 token 自动入网）。
@@ -165,5 +169,6 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 
 ### 下一步
 - ✅ **B1 节点实时推送已完成并上线**（`ca58ae66`）。
+- ✅ **站内通知（铃铛/未读/Toast）已完成**（`4ace25c1`）。
 - A 类三项依赖用户提供的资源（key / 真机 / 真服务器），无法自主推进。
 - 次优可自主推进：**B2 子网路由批准/禁用（Web 化）**（Exit Node 仍 on-demand）。
