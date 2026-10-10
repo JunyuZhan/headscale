@@ -124,7 +124,7 @@ export default function Nodes() {
                 <td className="p-3 text-slate-200 font-medium">{n.givenName ?? n.name}</td>
                 <td className="p-3 text-slate-400">{n.user?.name ?? "—"}</td>
                 <td className="p-3 text-slate-400 font-mono text-xs">
-                  {(n.addresses ?? []).join(", ") || "—"}
+                  {((n.ipAddresses ?? n.addresses) ?? []).join(", ") || "—"}
                 </td>
                 <td className="p-3">
                   <StatusDot online={!!(n.online ?? n.connected)} />

@@ -30,6 +30,7 @@ export interface Node {
   lastSeen?: string;
   expiry?: string;
   addresses?: string[];
+  ipAddresses?: string[]; // actual field returned by Headscale /api/v1/node
   machineKey?: string;
   nodeKey?: string;
   tags?: string[];

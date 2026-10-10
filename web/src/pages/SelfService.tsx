@@ -12,6 +12,7 @@ interface NodeRow {
   connected?: boolean;
   lastSeen?: string;
   addresses?: string[];
+  ipAddresses?: string[];
 }
 
 interface KeyResult {
@@ -129,7 +130,7 @@ export default function SelfService() {
                     <tr key={n.id ?? i} className="border-t border-slate-800">
                       <td className="py-1 pr-3">{n.givenName ?? n.name ?? "—"}</td>
                       <td className="py-1 pr-3 font-mono">
-                        {(n.addresses ?? []).join(", ")}
+                        {((n.ipAddresses ?? n.addresses) ?? []).join(", ")}
                       </td>
                       <td className="py-1 pr-3">
                         {n.online ?? n.connected ? (
