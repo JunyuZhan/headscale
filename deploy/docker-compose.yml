@@ -30,6 +30,9 @@ services:
       WEBUI_DB: "/var/lib/webui/webui.db"
       WEBUI_COOKIE_SECURE: "true"      # behind HTTPS -> secure cookie
       WEBUI_BOOTSTRAP_ADMIN: "${WEBUI_BOOTSTRAP_ADMIN}"   # "user:pass" first run
+      RESEND_API_KEY: "${RESEND_API_KEY}"            # empty disables email alerts
+      RESEND_FROM: "${RESEND_FROM:-Headscale <no-reply@sclink.dev>}"
+      RESEND_NOTIFY_TO: "${RESEND_NOTIFY_TO}"        # comma-separated alert recipients
       HEADSCALE_PUBLIC_URL: "https://${DOMAIN}"
     volumes:
       - webui_data:/var/lib/webui

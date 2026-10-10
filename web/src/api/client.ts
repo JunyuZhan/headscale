@@ -67,6 +67,17 @@ export interface Policy {
   updatedAt?: string;
 }
 
+// Audit / activity log entry recorded by the web backend.
+export interface Event {
+  id: number;
+  time: string;
+  actor: string;
+  type: string;
+  target: string;
+  detail: string;
+  ip: string;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body !== undefined && !headers.has("Content-Type")) {
@@ -256,4 +267,5 @@ export const api = {
 // Web-backend admin-only endpoints (require the session cookie + admin role).
 export const admin = {
   listInvites: () => backendFetch<Invite[]>("/admin/invites"),
+  events: () => backendFetch<Event[]>("/admin/events"),
 };

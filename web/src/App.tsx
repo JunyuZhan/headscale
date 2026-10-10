@@ -11,6 +11,7 @@ import PreAuthKeys from "./pages/PreAuthKeys";
 import Policy from "./pages/Policy";
 import SelfService from "./pages/SelfService";
 import Invite from "./pages/Invite";
+import Events from "./pages/Events";
 
 function AppInner() {
   const [me, setMe] = useState<Me | null>(null);
@@ -52,6 +53,7 @@ function AppInner() {
               <Route path="/keys" element={<PreAuthKeys />} />
               <Route path="/policy" element={<Policy />} />
               <Route path="/invite" element={<Invite />} />
+            <Route path="/events" element={<Events />} />
             </>
           )}
         </Route>

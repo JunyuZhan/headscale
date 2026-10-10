@@ -149,6 +149,16 @@ const zh: Record<string, string> = {
   "Password changed": "密码已修改",
   "Change password failed": "修改密码失败",
 
+  // Activity log (audit)
+  "Activity log": "活动日志",
+  "Time": "时间",
+  "Actor": "操作者",
+  "Event": "事件",
+  "Target": "对象",
+  "Detail": "详情",
+  "IP": "来源 IP",
+  "No activity yet.": "暂无活动记录。",
+
   // Mobile onboarding
   "Mobile access": "移动端接入",
   "Download profile (iOS)": "下载描述文件（iOS）",

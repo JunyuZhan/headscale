@@ -28,6 +28,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -45,9 +46,24 @@ type WebUser struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	Username       string    `gorm:"uniqueIndex;size:128" json:"username"`
 	PasswordHash   string    `json:"-"`
-	HeadscaleUser  string    `json:"headscale_user"` // empty for admin (sees all)
-	Role           string    `json:"role"`           // "admin" | "user"
+	Email          string    `json:"email,omitempty"` // optional; used for alert emails
+	HeadscaleUser  string    `json:"headscale_user"`  // empty for admin (sees all)
+	Role           string    `json:"role"`            // "admin" | "user"
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// Event is an audit-log / activity record for the web console. Every security-
+// relevant action (login, key creation, node changes, policy edits, user
+// management) is recorded here so admins have a tamper-evident trace and users
+// can see their own recent activity.
+type Event struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Time      time.Time `json:"time"`
+	Actor     string    `json:"actor"`     // username, or "anonymous" / "system"
+	Type      string    `json:"type"`      // login | login_fail | create_key | node_join | node_offline | apply_policy | ...
+	Target    string    `json:"target"`    // affected object (node name, username, ...)
+	Detail    string    `json:"detail"`    // human-readable summary
+	IP        string    `json:"ip"`
 }
 
 // Session is an authenticated browser session identified by a random token
@@ -86,6 +102,12 @@ type Config struct {
 	BootstrapAdmin   string // "user:pass" created on first run if no users exist
 	CookieSecure     bool
 	ServerURL        string // public base URL used to build client join commands
+
+	// Email (Resend). Emails are best-effort: a send failure is logged but
+	// never fails the triggering action.
+	ResendAPIKey   string // RESEND_API_KEY; empty disables all email sending
+	ResendFrom     string // default "Headscale <no-reply@sclink.dev>"
+	ResendNotifyTo string // comma-separated fallback recipients for alerts
 }
 
 func LoadConfig() *Config {
@@ -98,6 +120,9 @@ func LoadConfig() *Config {
 		BootstrapAdmin:  os.Getenv("WEBUI_BOOTSTRAP_ADMIN"),
 		CookieSecure:    os.Getenv("WEBUI_COOKIE_SECURE") != "false",
 		ServerURL:       getenv("HEADSCALE_PUBLIC_URL", ""),
+		ResendAPIKey:    os.Getenv("RESEND_API_KEY"),
+		ResendFrom:      getenv("RESEND_FROM", "Headscale <no-reply@sclink.dev>"),
+		ResendNotifyTo:  os.Getenv("RESEND_NOTIFY_TO"),
 	}
 	return c
 }
@@ -113,6 +138,19 @@ type Server struct {
 	cfg    *Config
 	db     *gorm.DB
 	client *http.Client
+
+	// loginGuard throttles failed login attempts per client IP + username to
+	// blunt brute-force / credential-stuffing. Stored in-memory (single
+	// process); good enough for this deployment and resets on restart.
+	guardMu      sync.Mutex
+	guardFails   map[string]int
+	guardLocked  map[string]time.Time
+
+	// watcher state for node join / offline detection (reliability alerts).
+	watchMu      sync.Mutex
+	knownNodes   map[string]bool   // node id -> was online last seen
+	knownOnline  map[string]bool   // node id -> last known online state
+	notifiedKeys map[string]bool   // preauthkey id -> expiry alert already sent
 }
 
 func NewServer(cfg *Config) (*Server, error) {
@@ -126,14 +164,19 @@ func NewServer(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening web db: %w", err)
 	}
-	if err := gormDB.AutoMigrate(&WebUser{}, &Session{}, &Invite{}); err != nil {
+	if err := gormDB.AutoMigrate(&WebUser{}, &Session{}, &Invite{}, &Event{}); err != nil {
 		return nil, fmt.Errorf("migrating web db: %w", err)
 	}
 
 	s := &Server{
-		cfg:    cfg,
-		db:     gormDB,
-		client: &http.Client{Timeout: 30 * time.Second},
+		cfg:          cfg,
+		db:           gormDB,
+		client:       &http.Client{Timeout: 30 * time.Second},
+		guardFails:   map[string]int{},
+		guardLocked:  map[string]time.Time{},
+		knownNodes:   map[string]bool{},
+		knownOnline:  map[string]bool{},
+		notifiedKeys: map[string]bool{},
 	}
 
 	if err := s.bootstrap(); err != nil {
@@ -200,10 +243,17 @@ func (s *Server) Handler() http.Handler {
 			rt.Get("/", s.handleListInvites)
 		})
 
+		// Admin-only audit log.
+		protected.Route("/ui/api/admin/events", func(rt chi.Router) {
+			rt.Use(middlewareOf(s.requireAdmin))
+			rt.Get("/", s.handleListEvents)
+		})
+
 		// Self-service: the logged-in user's own devices + key generation.
 		protected.Get("/ui/api/me", s.handleSelf)
 		protected.Post("/ui/api/me/preauthkey", s.handleCreateSelfKey)
 		protected.Post("/ui/api/me/password", s.handleChangePassword)
+		protected.Get("/ui/api/me/events", s.handleMyEvents)
 
 		// Generic proxy to Headscale /api/v1 with role-based scoping.
 		protected.Handle("/ui/api/proxy/*", s.handleProxy())
@@ -218,6 +268,7 @@ func (s *Server) Run() error {
 		return err
 	}
 	log.Printf("webbackend: listening on %s", s.cfg.Listen)
+	s.startWatcher()
 	return http.Serve(ln, s.Handler())
 }
 
@@ -322,19 +373,31 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
+	key := clientIP(r) + "|" + body.Username
+	if locked, until := s.guardCheck(key); locked {
+		s.recordEvent(r, "login_blocked", body.Username, "locked out")
+		writeError(w, http.StatusTooManyRequests, "尝试次数过多，请 "+strconv.Itoa(int(until.Minutes()))+" 分钟后再试")
+		return
+	}
 	var u WebUser
 	if err := s.db.Where("username = ?", body.Username).First(&u).Error; err != nil {
+		s.guardFail(key)
+		s.recordEvent(r, "login_fail", body.Username, "unknown user")
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(body.Password)); err != nil {
+		s.guardFail(key)
+		s.recordEvent(r, "login_fail", body.Username, "wrong password")
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
+	s.guardSuccess(key)
 	if err := s.newSession(w, &u); err != nil {
 		writeError(w, http.StatusInternalServerError, "session error")
 		return
 	}
+	s.recordEvent(r, "login", body.Username, "")
 	writeJSON(w, http.StatusOK, map[string]any{"username": u.Username, "role": u.Role, "headscale_user": u.HeadscaleUser})
 }
 
@@ -365,10 +428,11 @@ func (s *Server) handleListWebUsers(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateWebUser(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Username       string `json:"username"`
-		Password       string `json:"password"`
-		HeadscaleUser  string `json:"headscale_user"`
-		Role           string `json:"role"`
+		Username      string `json:"username"`
+		Password      string `json:"password"`
+		Email         string `json:"email"`
+		HeadscaleUser string `json:"headscale_user"`
+		Role          string `json:"role"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "bad request")
@@ -393,6 +457,7 @@ func (s *Server) handleCreateWebUser(w http.ResponseWriter, r *http.Request) {
 	u := WebUser{
 		Username:      body.Username,
 		PasswordHash:  string(hash),
+		Email:         body.Email,
 		HeadscaleUser: body.HeadscaleUser,
 		Role:          body.Role,
 	}
@@ -400,15 +465,21 @@ func (s *Server) handleCreateWebUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "username exists or db error")
 		return
 	}
+	s.recordEvent(r, "create_user", body.Username, "role="+body.Role)
 	writeJSON(w, http.StatusCreated, u)
 }
 
 func (s *Server) handleDeleteWebUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	// Drop any active sessions for the deleted user.
+	if uid, err := strconv.Atoi(id); err == nil {
+		s.db.Where("user_id = ?", uint(uid)).Delete(&Session{})
+	}
 	if err := s.db.Delete(&WebUser{}, id).Error; err != nil {
 		writeError(w, http.StatusInternalServerError, "db error")
 		return
 	}
+	s.recordEvent(r, "delete_user", id, "")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -445,6 +516,11 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "update error")
 		return
 	}
+	// Invalidate every session for this user (including the current one) so a
+	// stolen/old session can no longer be used after the password changes.
+	s.db.Where("user_id = ?", u.ID).Delete(&Session{})
+	s.clearSession(w, r)
+	s.recordEvent(r, "change_password", u.Username, "")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -467,6 +543,12 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "update error")
 		return
 	}
+	// The target user's sessions are invalidated so a reset password takes
+	// immediate effect (the user must log in again).
+	if uid, cerr := strconv.Atoi(id); cerr == nil {
+		s.db.Where("user_id = ?", uint(uid)).Delete(&Session{})
+	}
+	s.recordEvent(r, "reset_password", id, "")
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -558,6 +640,16 @@ func (s *Server) handleCreateSelfKey(w http.ResponseWriter, r *http.Request) {
 		log.Printf("webbackend: failed to record invite ledger: %v", err)
 	}
 
+	// Audit + alert on key creation.
+	s.recordEvent(r, "create_key", target, "device="+body.DeviceDesc+" expiry="+strconv.Itoa(body.ExpirationHours)+"h")
+	keyHTML := "<p>用户 <b>" + u.Username + "</b> 生成了一枚接入密钥。</p>" +
+		"<ul><li>目标 Headscale 用户: " + target + "</li>" +
+		"<li>设备: " + body.DeviceDesc + "</li>" +
+		"<li>有效期: " + strconv.Itoa(body.ExpirationHours) + " 小时</li>" +
+		"<li>申请人: " + body.Applicant + "</li>" +
+		"<li>组织: " + body.Org + "</li></ul>"
+	s.notifyAdmins("新接入密钥已生成: "+u.Username, keyHTML)
+
 	serverURL := s.cfg.ServerURL
 	if serverURL == "" {
 		serverURL = s.cfg.HeadscaleURL
@@ -618,6 +710,9 @@ func (s *Server) handleProxy() http.HandlerFunc {
 			writeError(w, http.StatusForbidden, err.Error())
 			return
 		}
+
+		// Record mutating operations for the audit log (reads are skipped).
+		s.recordProxyEvent(r, rest)
 
 		s.forward(w, r, target)
 	}
@@ -774,6 +869,332 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, target string) 
 	copyHeader(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
 	w.Write(respBody)
+}
+
+// ---- audit log, email, security helpers ----------------------------------
+
+// clientIP returns the best-effort client IP. The RealIP middleware sets
+// RemoteAddr to the real client IP; we also honour X-Forwarded-For (Caddy sits
+// in front and passes the original address through).
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.IndexByte(xff, ','); idx >= 0 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
+}
+
+// recordEvent writes an audit event. The actor is taken from the active session
+// when available; an absent/invalid session (or a nil request, used by the
+// background watcher) yields "system" / "anonymous".
+func (s *Server) recordEvent(r *http.Request, eventType, target, detail string) {
+	actor := "system"
+	ip := ""
+	if r != nil {
+		ip = clientIP(r)
+		if u, err := s.sessionUser(r); err == nil {
+			actor = u.Username
+		} else {
+			actor = "anonymous"
+		}
+	}
+	ev := Event{Time: time.Now(), Actor: actor, Type: eventType, Target: target, Detail: detail, IP: ip}
+	if err := s.db.Create(&ev).Error; err != nil {
+		log.Printf("webbackend: recordEvent failed: %v", err)
+	}
+}
+
+// sendEmail delivers a single email via Resend. Best-effort: failures are
+// logged but never returned to the caller so they cannot break the action.
+func (s *Server) sendEmail(to, subject, htmlBody string) {
+	key := s.cfg.ResendAPIKey
+	if key == "" {
+		log.Printf("webbackend: email skipped (RESEND_API_KEY not set): %s -> %s", to, subject)
+		return
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"from":    s.cfg.ResendFrom,
+		"to":      []string{to},
+		"subject": subject,
+		"html":    htmlBody,
+	})
+	req, err := http.NewRequest(http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(payload))
+	if err != nil {
+		log.Printf("webbackend: email build error: %v", err)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		log.Printf("webbackend: email send error: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		log.Printf("webbackend: email send failed (%d): %s", resp.StatusCode, string(b))
+		return
+	}
+	log.Printf("webbackend: email sent to %s: %s", to, subject)
+}
+
+// alertRecipients returns the addresses that should receive administrative
+// alerts: any admin web user with an email set, falling back to
+// RESEND_NOTIFY_TO when no admin has an email configured.
+func (s *Server) alertRecipients() []string {
+	seen := map[string]bool{}
+	var out []string
+	var admins []WebUser
+	if err := s.db.Where("role = ?", "admin").Find(&admins).Error; err == nil {
+		for _, a := range admins {
+			if a.Email != "" && !seen[a.Email] {
+				seen[a.Email] = true
+				out = append(out, a.Email)
+			}
+		}
+	}
+	for _, e := range strings.Split(s.cfg.ResendNotifyTo, ",") {
+		e = strings.TrimSpace(e)
+		if e != "" && !seen[e] {
+			seen[e] = true
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// notifyAdmins sends an alert email to every configured recipient.
+func (s *Server) notifyAdmins(subject, htmlBody string) {
+	for _, to := range s.alertRecipients() {
+		s.sendEmail(to, subject, htmlBody)
+	}
+}
+
+// ---- login throttling -----------------------------------------------------
+
+const (
+	loginMaxFails    = 5
+	loginLockMinutes = 15
+)
+
+// guardCheck reports whether the key is currently locked out and for how long.
+func (s *Server) guardCheck(key string) (bool, time.Duration) {
+	s.guardMu.Lock()
+	defer s.guardMu.Unlock()
+	if until, ok := s.guardLocked[key]; ok && until.After(time.Now()) {
+		return true, time.Until(until)
+	}
+	return false, 0
+}
+
+// guardFail records a failed attempt and locks the key past the threshold.
+func (s *Server) guardFail(key string) {
+	s.guardMu.Lock()
+	defer s.guardMu.Unlock()
+	s.guardFails[key]++
+	if s.guardFails[key] >= loginMaxFails {
+		s.guardLocked[key] = time.Now().Add(time.Duration(loginLockMinutes) * time.Minute)
+		s.guardFails[key] = 0
+	}
+}
+
+// guardSuccess resets the failure counter for a key.
+func (s *Server) guardSuccess(key string) {
+	s.guardMu.Lock()
+	defer s.guardMu.Unlock()
+	delete(s.guardFails, key)
+	delete(s.guardLocked, key)
+}
+
+// ---- audit log endpoints --------------------------------------------------
+
+func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
+	var events []Event
+	if err := s.db.Order("id desc").Limit(300).Find(&events).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	writeJSON(w, http.StatusOK, events)
+}
+
+func (s *Server) handleMyEvents(w http.ResponseWriter, r *http.Request) {
+	u := userFromContext(r.Context())
+	var events []Event
+	if err := s.db.Where("actor = ?", u.Username).Order("id desc").Limit(100).Find(&events).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	writeJSON(w, http.StatusOK, events)
+}
+
+// recordProxyEvent records audit events for mutating proxy calls (node tag /
+// rename / expire / delete, policy apply). Read-only calls are not recorded.
+func (s *Server) recordProxyEvent(r *http.Request, rest string) {
+	parts := strings.Split(strings.Trim(rest, "/"), "/")
+	switch {
+	case r.Method == http.MethodPut && rest == "/policy":
+		s.recordEvent(r, "apply_policy", "policy", "")
+	case r.Method == http.MethodPost && len(parts) >= 3 && parts[0] == "node":
+		id := parts[1]
+		switch parts[2] {
+		case "tags":
+			s.recordEvent(r, "node_tag", id, "")
+		case "rename":
+			s.recordEvent(r, "node_rename", id, "")
+		case "expire":
+			s.recordEvent(r, "node_expire", id, "")
+		}
+	case r.Method == http.MethodDelete && len(parts) >= 2 && parts[0] == "node":
+		s.recordEvent(r, "node_delete", parts[1], "")
+	}
+}
+
+// ---- background watcher (reliability alerts) -----------------------------
+
+// startWatcher launches a background goroutine that periodically polls
+// Headscale for node join / offline transitions and soon-to-expire keys. It
+// always records these as audit events; email alerts are sent on top only when
+// Resend is configured, so the reliability trail works even without email.
+func (s *Server) startWatcher() {
+	if s.cfg.ResendAPIKey == "" {
+		log.Printf("webbackend: email alerts disabled (RESEND_API_KEY not set); watcher still records join/offline events")
+	}
+	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		s.scanNodes(false)
+		s.scanKeys(false)
+		for range ticker.C {
+			s.scanNodes(true)
+			s.scanKeys(true)
+		}
+	}()
+}
+
+// scanNodes detects new nodes and offline transitions. When alert is false it
+// only primes the known-state cache (no emails / events).
+func (s *Server) scanNodes(alert bool) {
+	req, err := http.NewRequest(http.MethodGet, strings.TrimRight(s.cfg.HeadscaleURL, "/")+"/api/v1/node", nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+s.cfg.HeadscaleAPIKey)
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	var parsed struct {
+		Nodes []struct {
+			ID     string `json:"id"`
+			Name   string `json:"name"`
+			Online bool   `json:"online"`
+		} `json:"nodes"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return
+	}
+	cur := map[string]bool{}
+	for _, n := range parsed.Nodes {
+		cur[n.ID] = true
+		s.watchMu.Lock()
+		wasOnline, seen := s.knownOnline[n.ID]
+		s.knownOnline[n.ID] = n.Online
+		isNew := !s.knownNodes[n.ID]
+		s.knownNodes[n.ID] = true
+		s.watchMu.Unlock()
+		if !alert {
+			continue
+		}
+		if isNew {
+			s.recordEvent(nil, "node_join", n.Name, "new node online")
+			s.notifyAdmins("新节点入网: "+n.Name, "<p>节点 <b>"+n.Name+"</b> 已加入组网。</p>")
+		} else if seen && wasOnline && !n.Online {
+			s.recordEvent(nil, "node_offline", n.Name, "node went offline")
+			s.notifyAdmins("节点掉线: "+n.Name, "<p>节点 <b>"+n.Name+"</b> 已掉线。</p>")
+		}
+	}
+	s.watchMu.Lock()
+	for id := range s.knownNodes {
+		if !cur[id] {
+			delete(s.knownNodes, id)
+			delete(s.knownOnline, id)
+		}
+	}
+	s.watchMu.Unlock()
+}
+
+// scanKeys alerts (once) about pre-auth keys that will expire within 24h.
+func (s *Server) scanKeys(alert bool) {
+	ureq, err := http.NewRequest(http.MethodGet, strings.TrimRight(s.cfg.HeadscaleURL, "/")+"/api/v1/user", nil)
+	if err != nil {
+		return
+	}
+	ureq.Header.Set("Authorization", "Bearer "+s.cfg.HeadscaleAPIKey)
+	uresp, err := s.client.Do(ureq)
+	if err != nil {
+		return
+	}
+	defer uresp.Body.Close()
+	var uparsed struct {
+		Users []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"users"`
+	}
+	if err := json.NewDecoder(uresp.Body).Decode(&uparsed); err != nil {
+		return
+	}
+	threshold := time.Now().Add(24 * time.Hour)
+	for _, u := range uparsed.Users {
+		kreq, err := http.NewRequest(http.MethodGet, strings.TrimRight(s.cfg.HeadscaleURL, "/")+"/api/v1/preauthkey?user="+u.ID, nil)
+		if err != nil {
+			continue
+		}
+		kreq.Header.Set("Authorization", "Bearer "+s.cfg.HeadscaleAPIKey)
+		kresp, err := s.client.Do(kreq)
+		if err != nil {
+			continue
+		}
+		b, _ := io.ReadAll(kresp.Body)
+		kresp.Body.Close()
+		var kparsed struct {
+			PreAuthKeys []struct {
+				ID         string    `json:"id"`
+				Expiration time.Time `json:"expiration"`
+			} `json:"preAuthKeys"`
+		}
+		if err := json.Unmarshal(b, &kparsed); err != nil {
+			continue
+		}
+		for _, k := range kparsed.PreAuthKeys {
+			if k.Expiration.IsZero() {
+				continue
+			}
+			s.watchMu.Lock()
+			notified := s.notifiedKeys[k.ID]
+			s.watchMu.Unlock()
+			if notified {
+				continue
+			}
+			if k.Expiration.Before(threshold) && k.Expiration.After(time.Now()) {
+				s.watchMu.Lock()
+				s.notifiedKeys[k.ID] = true
+				s.watchMu.Unlock()
+				s.recordEvent(nil, "key_expiring", u.Name, "key "+k.ID+" expires "+k.Expiration.Format(time.RFC3339))
+				if alert {
+					s.notifyAdmins("密钥即将过期: "+u.Name,
+						"<p>用户 <b>"+u.Name+"</b> 的密钥将于 "+k.Expiration.Format(time.RFC3339)+" 过期。</p>")
+				}
+			}
+		}
+	}
 }
 
 // ---- Headscale helpers ----------------------------------------------------
