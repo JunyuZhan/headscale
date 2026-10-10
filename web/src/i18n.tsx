@@ -153,6 +153,13 @@ const zh: Record<string, string> = {
   "Used as node hostname; ASCII only, e.g. zhangsan-laptop":
     "作为节点名（仅 ASCII，例如 zhangsan-laptop）",
   "Invitation ledger": "邀请台账",
+  "Invite record": "邀请记录",
+  "Invited, not yet joined — the device will appear above once it joins.":
+    "已发出邀请、尚未加入——设备上线后会自动出现在上方节点列表。",
+  "Add device": "添加设备",
+  "Pending join": "待加入",
+  "Invite sent": "邀请已发出",
+  Close: "关闭",
   "No invitations yet.": "暂无邀请记录。",
   "Device": "设备",
   "Node name": "节点名",

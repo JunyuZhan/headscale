@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type Node } from "../api/client";
+import { useOutletContext } from "react-router-dom";
+import { admin, api, type Invite, type Me, type Node } from "../api/client";
 import { useI18n } from "../i18n";
 import { useNodeStream } from "../lib/useNodeStream";
+import AddDeviceModal from "../components/AddDeviceModal";
 
 function StatusDot({ online }: { online: boolean }) {
   const { t } = useI18n();
@@ -29,9 +31,23 @@ function fmt(ts?: string): string {
 
 export default function Nodes() {
   const { t } = useI18n();
+  const me = useOutletContext<Me>();
+  const isAdmin = me.role === "admin";
   const [nodes, setNodes] = useState<Node[]>([]);
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const loadInvites = useCallback(() => {
+    if (!isAdmin) return;
+    admin
+      .listInvites()
+      .then(setInvites)
+      .catch(() => {
+        /* ledger is admin-only; ignore on error */
+      });
+  }, [isAdmin]);
 
   const load = useCallback(() => {
     setBusy(true);
@@ -43,10 +59,26 @@ export default function Nodes() {
   }, []);
 
   useEffect(() => load(), [load]);
+  useEffect(() => loadInvites(), [loadInvites]);
 
   // Live-update: the backend pushes a signal whenever a node joins/leaves or
   // flips online/offline, so the table refreshes itself without a manual click.
-  useNodeStream(load, true);
+  // Pending invites are reloaded too, so a row moves from "pending" to a real
+  // node as soon as the invited device comes online.
+  useNodeStream(() => {
+    load();
+    loadInvites();
+  }, true);
+
+  // A pending invite = key still valid AND no node has joined under its
+  // hostname yet. Joined nodes are shown in the main table instead.
+  const nodeNames = new Set(nodes.map((n) => (n.givenName ?? n.name ?? "").toLowerCase()));
+  const pending = invites.filter(
+    (iv) =>
+      new Date(iv.expires_at).getTime() > Date.now() &&
+      !nodeNames.has((iv.hostname || "").toLowerCase()),
+  );
+  const pendingHostnames = new Set(pending.map((p) => p.hostname));
 
   const run = async (msg: string, fn: () => Promise<unknown>) => {
     setError("");
@@ -92,10 +124,21 @@ export default function Nodes() {
             <span className="w-2 h-2 rounded-full bg-emerald-400 status-pulse" />
             {t("Live")}
           </span>
+          {isAdmin && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              ＋ {t("Add device")}
+            </button>
+          )}
           <button
-            onClick={load}
+            onClick={() => {
+              load();
+              loadInvites();
+            }}
             disabled={busy}
-            className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
+            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
           >
             {t("Refresh")}
           </button>
@@ -180,7 +223,30 @@ export default function Nodes() {
                 </td>
               </tr>
             ))}
-            {nodes.length === 0 && (
+            {pending.map((iv) => (
+              <tr
+                key={`inv-${iv.id}`}
+                className="border-t border-slate-800 bg-slate-900/40"
+              >
+                <td className="p-3 text-slate-400 italic">
+                  {iv.hostname || iv.device_desc || "—"}
+                </td>
+                <td className="p-3 text-slate-500">{iv.target_user || "—"}</td>
+                <td className="p-3 text-slate-600 font-mono text-xs">—</td>
+                <td className="p-3">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full border border-amber-400/70" />
+                    <span className="text-amber-300/90">{t("Pending join")}</span>
+                  </span>
+                </td>
+                <td className="p-3 text-slate-500 text-xs">—</td>
+                <td className="p-3 text-slate-600 text-xs">—</td>
+                <td className="p-3 text-right text-slate-500 text-xs whitespace-nowrap">
+                  {t("Invite sent")} · {fmt(iv.expires_at).slice(0, 10)}
+                </td>
+              </tr>
+            ))}
+            {nodes.length === 0 && pending.length === 0 && (
               <tr>
                 <td colSpan={7} className="p-6 text-center text-slate-500">
                   {t("No nodes")}
@@ -190,6 +256,64 @@ export default function Nodes() {
           </tbody>
         </table>
       </div>
+
+      {isAdmin && invites.length > 0 && (
+        <div className="card p-4 mt-5">
+          <h3 className="text-sm font-medium text-slate-200 mb-1">
+            {t("Invite record")}
+          </h3>
+          <p className="text-xs text-slate-500 mb-3">
+            {t("Invited, not yet joined — the device will appear above once it joins.")}
+          </p>
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="text-slate-400">
+                <tr className="text-left">
+                  <th className="py-1 pr-3">{t("Applicant")}</th>
+                  <th className="py-1 pr-3">{t("Device")}</th>
+                  <th className="py-1 pr-3">{t("Organization")}</th>
+                  <th className="py-1 pr-3">{t("Node name")}</th>
+                  <th className="py-1 pr-3">{t("Target user")}</th>
+                  <th className="py-1 pr-3">{t("By")}</th>
+                  <th className="py-1 pr-3">{t("Expires")}</th>
+                  <th className="py-1">{t("Status")}</th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-300">
+                {invites.map((iv) => {
+                  const expired = new Date(iv.expires_at).getTime() <= Date.now();
+                  const label = expired
+                    ? t("已过期")
+                    : pendingHostnames.has(iv.hostname)
+                      ? t("Pending join")
+                      : t("已使用");
+                  return (
+                    <tr key={iv.id} className="border-t border-slate-800">
+                      <td className="py-1 pr-3">{iv.applicant || "—"}</td>
+                      <td className="py-1 pr-3">{iv.device_desc || "—"}</td>
+                      <td className="py-1 pr-3">{iv.org || "—"}</td>
+                      <td className="py-1 pr-3">{iv.hostname || "—"}</td>
+                      <td className="py-1 pr-3">{iv.target_user}</td>
+                      <td className="py-1 pr-3">{iv.created_by}</td>
+                      <td className="py-1 pr-3">
+                        {fmt(iv.expires_at).slice(0, 16)}
+                      </td>
+                      <td className="py-1">{label}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {showAdd && (
+        <AddDeviceModal
+          onClose={() => setShowAdd(false)}
+          onAdded={loadInvites}
+        />
+      )}
     </div>
   );
 }

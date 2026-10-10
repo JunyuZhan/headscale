@@ -15,7 +15,6 @@ const adminNav = [
   { to: "/accounts", key: "Console accounts", end: false, icon: "accounts" },
   { to: "/keys", key: "Pre-auth keys", end: false, icon: "keys" },
   { to: "/policy", key: "ACL Policy", end: false, icon: "policy" },
-  { to: "/invite", key: "Invite device", end: false, icon: "invite" },
   { to: "/events", key: "Activity log", end: false, icon: "events" },
   { to: "/settings", key: "Mail settings", end: false, icon: "mail" },
 ];
