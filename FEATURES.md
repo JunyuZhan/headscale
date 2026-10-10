@@ -70,6 +70,23 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 | `e3e90bfd` | **PreAuthKey 渲染崩溃修复**：该 Headscale 版本返回的 `user` 是完整 User 对象而非字符串，表格直接渲染导致 React #31 崩溃；改为取 `.name` 并放宽类型。 |
 | 本次新增 | **邀请设备（admin）+ 限制性 ACL + 吊销**：新增 `web/src/pages/Invite.tsx`（admin 选目标 Headscale 用户生成 PreAuthKey，返回含自动安装步骤的全平台命令，可复制 / 下载 `.sh` `.ps1` 脚本）；后端 `joinCommands` 增强为「安装 + join」一行命令；`Nodes` 页「删除」改为「吊销设备」并加二次确认；服务端写入限制**子网** ACL（默认 deny，仅放行 `internal-net = 192.168.50.0/24`）。 |
 | 本次新增（v2） | **邀请台账 + 节点归属 + 自助改密码 + ACL 预设切换**：① 新增 `Invite` 模型与 `POST /ui/api/admin/invites` 列表接口，邀请设备时填写**申请人 / 设备描述 / 单位**，后台留存可查列表（谁、什么设备、单位、状态、过期时间）；② `joinCommands` 注入 `--hostname`（用设备描述），连入后节点名即设备名，`Nodes` 页可识别归属；③ 新增 `POST /ui/api/me/password`（自助改密码）+ `POST /ui/api/admin/webusers/:id/password`（admin 重置），前端 Layout 用户菜单加「修改密码」弹窗；④ ACL 改为 **tag 驱动、后台可切换预设**（成员隔离：仅放行 → `tag:server`；成员互访：全互通），不再写死任何物理子网。 |
+| `2d8a67cc` | **Web UI 美化重构 + 修改 admin 默认密码**：Dashboard/Nodes/Policy 统一样式（卡片、focus-ring、状态药丸、统一按钮）；`Layout` 用户菜单加「修改密码」；部署侧将 admin 默认密码改掉。 |
+| `fd271669` | **统一美化 + 移动端接入 + 收窄代理白名单**：重写 `Users.tsx`/`PreAuthKeys.tsx` 对齐设计；`Invite.tsx` 增「移动端接入」卡片（iOS `.mobileconfig` + Android 托管配置）；**后端 `handleProxy` 收窄白名单**（仅放行 node/user/preauthkey/policy 对应 method/path，其余 tailnet/apikey/derp 等一律 403）。 |
+| `6b7bfe0b` | **移动接入公共库 + 自助页补 Windows/移动端**：抽取 `web/src/lib/mobileconfig.ts`（`buildMobileConfig` iOS / `buildAndroidConfig` Android），`Invite.tsx`/`SelfService.tsx` 共用；`SelfService` 此前缺 Windows 命令块与移动端接入，现已补齐（非管理员 iPhone 用户也能拿描述文件）。已用线上真实密钥经 esbuild 跑通库代码并 `plistlib` 解析校验。 |
+| `5dd28cce` | **修复代理白名单误伤节点管理（严重 bug）**：上一轮 `proxyAllowed` 过严，`POST/DELETE /node/...` 被拦，导致 Nodes 页打标签/删除/过期/改名全部静默失败（实测 403 `forbidden: proxy endpoint not allowed`）。改为放行 `/node/` 前缀，并对非管理员加节点变更/删除 403 护栏。 |
+| `d1804810` | **修复 Windows 安装包 URL 404（严重 bug）**：`joinCommands` 原引用 `tailscale-ipn.msi`/`setup.exe`（curl 实测 404），改为官方现行可用的 `tailscale-setup-latest.exe` + `Start-Process -Wait ... '/S'`。grep 运行中二进制确认一致。 |
+| `9042c523` | **修复两处节点显示 bug（真机容器节点实测）**：① 改名无效——Headscale 改名端点改的是 `givenName`，前端只渲染 `n.name`，改为 `n.givenName ?? n.name`；② 状态灯恒显离线——API 返回 `online` 而前端读 `n.connected`（永不填充），改为 `n.online ?? n.connected`。`SelfService` 的 `NodeRow` 同步补字段。 |
+| `166037b1` | **安全 + 可靠性套件**：① 审计日志（`Event` 模型 + `/admin/events` + `/me/events` + 新增「活动日志」页，登录/建删账号/改密/建密钥/套用策略/节点操作/代理均落库）；② 邮件告警（Resend REST，best-effort）；③ **登录限流**（同 IP+用户名 5 次失败锁 15 分钟→429）；④ **改密即注销该用户全部会话**；⑤ **节点上下线监控**（`startWatcher` 每 60s 轮询 Headscale，记录 node_join/node_offline，不依赖邮件密钥即运行）。 |
+| `d5abb16c` | **SMTP 发信支持**：新增 SMTP 通道（STARTTLS 587 / 隐式 TLS 465，Resend 用户名恒为 `resend`、密码=API key），配置 `SMTP_HOST` 时优先走 SMTP，否则回退 Resend REST；`SMTP_PASSWORD` 缺省复用 `RESEND_API_KEY`。本地用 Go `net/smtp` 对 `smtp.resend.com:587` 实跑 STARTTLS 握手（TLS1.3、证书 OK）+ 确认服务端提供 AUTH。 |
+| `e94ec0e8` | **邮件设置后台可配 + Dashboard 在线数修复 + 在线灯呼吸动画**：① 新增 `Setting` 表持久化邮件配置，启动从 env 播种进库（现有 `RESEND_API_KEY`/`SMTP_*` 部署无需改 `.env` 即沿用）；`GET/PUT /admin/settings/mail`（密码/密钥掩码、空值不覆盖）+ `POST /mail/test` 真实发测试信并回报成败；新增「邮件设置」页（admin 侧边栏：启用开关/SMTP/Resend/告警收件人/发送测试邮件）；② **修复 Dashboard 在线数恒为 0**（原用 `x.connected` → 改 `x.online ?? x.connected`）；③ 在线绿灯加 `.status-pulse` 呼吸动画。 |
+
+#### 2026-10-10 真机验证要点（五轮自检）
+本轮在 debian/hk/aly/VPS 真实组网环境完成 5 轮、每轮落实验证，核心结论：
+- **`tailscale ping` 测的是 WireGuard 控制端口 41641，永不受 ACL 约束、永远 pong，不能证明数据流量通断**；ACL 生效必须用真实 TCP（对 Tailscale IP 起 `python3 -m http.server` 再用对端 `curl`）。
+- ACL 隔离：member（aly/debian）TCP 可达 `tag:server`（hk-node），member 之间互相超时（隔离）；server→member 同样被正确隔离（纠正了 ping 假阳性误判）。
+- 预设：MESH 互访 200 → 回退 ISOLATED 隔离生效；生产保持 ISOLATED。
+- 安全审计：非管理员 `sectest` 对 policy/user/admin 列表/邀请/webusers/节点变更 全部 403；自助建 key 200。
+- 已修复并验证上线：代理白名单 403、Windows 404、givenName/online 两处显示 bug。
 
 ### 部署侧（实现的一部分）
 - VPS（`156.225.20.242`）真机上线：`headscale-web:local` 镜像，host nginx 做 TLS 终止 + 反代（`/ui/api/*` → 18090，`/` → 302 → `/ui/`，其余 → 18080）。
@@ -82,18 +99,22 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 
 - 节点**子网路由的批准/禁用**、Exit Node 开关（当前靠 `autoApprovers` 或 `headscale` CLI）。
 - 节点审批（registered vs 待审）、设备分享（sharing machine to another user）。
-- DNS 设置、DERP 地图、OIDC 用户注册的 Web 配置。
-- 日志 / metrics 可视化（`/metrics` 已开但无界面）。
+- DNS 设置、DERP 地图、OIDC 用户注册的 Web 配置（OIDC 本体支持但本 fork 的 Web 未接入）。
+- **metrics 可视化**（`/metrics` 已开但无界面；审计日志 / 活动日志页 `166037b1` 已实现，不在此列）。
 - 节点列表实时推送（当前为手动刷新）。
+- **移动端描述文件真机装机验证**：iOS `.mobileconfig` / Android 托管配置代码（`6b7bfe0b`）已生成并经 plist/JSON 解析校验，但环境无移动设备，**未做真机安装验证**。
 
 ---
 
-## 五、功能规划与优先级（用户决策，2026-10-09）
+## 五、功能规划与优先级（用户决策，2026-10-09 → 2026-10-10 更新）
 
 - **设备入网与访问控制（v2）**：✅ 已完成并上线。token 命令一键入网（无需每人建账号）+ **ACL tag 驱动可切换预设**（成员隔离 / 成员互访）+ **邀请台账**（申请人 / 设备 / 单位可查）+ **节点归属 hostname** + 后台可随时**吊销** + **自助改密码**。不做"逐个审批门"。详见 `PLAN-设备入网与隔离.md`。
 - **纯节点方案**：内网服务器作为节点（`tag:server`）加入 VPN，不再用子网路由宣告整个 /24；debian10 不再当 subnet router（已移除 `autoApprovers`）。
-- **移动端描述文件**：设备入网稳定后补（iOS `.mobileconfig` + Android 指引）。
+- **移动端描述文件**：✅ 代码已完成（`6b7bfe0b`，iOS `.mobileconfig` + Android 托管配置，公共库 `web/src/lib/mobileconfig.ts`），⚠️ 真机装机未验证。
+- **安全 + 可靠性套件**：✅ 已完成（`166037b1`）：审计日志 / 活动日志页、邮件告警（Resend + SMTP）、登录限流（5 次失败锁 15 分钟）、改密注销全部会话、节点上下线监控。
+- **邮件设置后台可配**：✅ 已完成（`e94ec0e8`）：「邮件设置」页（admin）可配置 SMTP/Resend/告警收件人 + 一键发测试邮件；配置持久化到 `Setting` 表，启动时从 env 播种。
+- **登录页等 UI 细节打磨**：⬜ 用户原则「先功能后美化」，仍排在功能完善之后（Dashboard/Nodes/Users/Keys/Policy 已统一美化，登录页等细化待做）。
 - **Exit Node 开关**：有人提需求再做（on-demand）。
 - **节点审批**：已决定**不做**（采用 token 自动入网）。
 - **DNS / DERP / OIDC 配置界面**：继续暂缓。
-- **日志 / metrics / 实时推送**：最后做。
+- **metrics 可视化 / 节点列表实时推送**：最后做（审计/活动日志页已先行）。
