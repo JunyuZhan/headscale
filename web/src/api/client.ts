@@ -220,6 +220,7 @@ export const self = {
       method: "POST",
       body: JSON.stringify({ old: oldP, new: newP }),
     }),
+  events: () => backendFetch<Event[]>("/me/events"),
 };
 
 export const api = {

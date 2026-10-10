@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { auth, self, type Me } from "../api/client";
 import { useI18n } from "../i18n";
+import Notifications from "./Notifications";
 
 const baseNav = [
   { to: "/", key: "Overview", end: true, icon: "overview" },
@@ -302,14 +303,17 @@ export default function Layout({
           <div className="text-sm text-slate-400">
             {t(me.role === "admin" ? "Administration" : "Workspace")}
           </div>
-          <button
-            onClick={() => setLang(lang === "zh" ? "en" : "zh")}
-            className="flex items-center gap-1.5 text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
-            title="Language / 语言"
-          >
-            <Icon name="globe" className="w-4 h-4" />
-            {lang === "zh" ? "EN" : "中文"}
-          </button>
+          <div className="flex items-center gap-2">
+            <Notifications isAdmin={isAdmin} />
+            <button
+              onClick={() => setLang(lang === "zh" ? "en" : "zh")}
+              className="flex items-center gap-1.5 text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+              title="Language / 语言"
+            >
+              <Icon name="globe" className="w-4 h-4" />
+              {lang === "zh" ? "EN" : "中文"}
+            </button>
+          </div>
         </div>
         <div className="p-6">
           <Outlet context={me} />

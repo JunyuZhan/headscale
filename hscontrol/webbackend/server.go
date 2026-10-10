@@ -210,6 +210,12 @@ type Server struct {
 	sseMu      sync.Mutex
 	sseClients map[chan struct{}]bool
 	sseSig     string // last broadcast signature ("id:online,...")
+
+	// SSE event-stream hub: signals subscribed browsers when a new audit event
+	// is recorded, so the console can show an in-app notification (badge/toast).
+	// Each channel carries the event payload; buffered + non-blocking send.
+	sseEvMu      sync.Mutex
+	sseEvClients map[chan []byte]bool
 }
 
 func NewServer(cfg *Config) (*Server, error) {
@@ -238,6 +244,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		notifiedKeys: map[string]bool{},
 		mail:         &MailSettings{},
 		sseClients:   map[chan struct{}]bool{},
+		sseEvClients: map[chan []byte]bool{},
 	}
 
 	if err := s.bootstrap(); err != nil {
@@ -393,6 +400,10 @@ func (s *Server) Handler() http.Handler {
 		// Server-sent events: pushes a signal whenever the node set or any
 		// node's online state changes, so the console can auto-refresh.
 		protected.Get("/ui/api/nodes/stream", s.handleNodeStream)
+
+		// Server-sent events: pushes each new audit event for in-app
+		// notifications (bell badge / toast).
+		protected.Get("/ui/api/events/stream", s.handleEventStream)
 
 		// Generic proxy to Headscale /api/v1 with role-based scoping.
 		protected.Handle("/ui/api/proxy/*", s.handleProxy())
@@ -1046,6 +1057,31 @@ func (s *Server) recordEvent(r *http.Request, eventType, target, detail string) 
 	ev := Event{Time: time.Now(), Actor: actor, Type: eventType, Target: target, Detail: detail, IP: ip}
 	if err := s.db.Create(&ev).Error; err != nil {
 		log.Printf("webbackend: recordEvent failed: %v", err)
+		return
+	}
+	// Push to any subscribed console so it can show an in-app notification.
+	s.broadcastEvent(ev)
+}
+
+// broadcastEvent fans a new audit event out to all subscribed SSE clients.
+// Sends are non-blocking: a slow/stalled client simply misses a push (it still
+// has the full list to resync from).
+func (s *Server) broadcastEvent(ev Event) {
+	b, err := json.Marshal(ev)
+	if err != nil {
+		return
+	}
+	s.sseEvMu.Lock()
+	clients := make([]chan []byte, 0, len(s.sseEvClients))
+	for ch := range s.sseEvClients {
+		clients = append(clients, ch)
+	}
+	s.sseEvMu.Unlock()
+	for _, ch := range clients {
+		select {
+		case ch <- b:
+		default:
+		}
 	}
 }
 
@@ -1282,6 +1318,58 @@ func (s *Server) handleMyEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, events)
+}
+
+// handleEventStream is the SSE endpoint backing the in-app notification bell.
+// Admins receive every new audit event; non-admins receive only their own.
+func (s *Server) handleEventStream(w http.ResponseWriter, r *http.Request) {
+	u := userFromContext(r.Context())
+	isAdmin := u.Role == "admin"
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming unsupported")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	ch := make(chan []byte, 8)
+	s.sseEvMu.Lock()
+	s.sseEvClients[ch] = true
+	s.sseEvMu.Unlock()
+	defer func() {
+		s.sseEvMu.Lock()
+		delete(s.sseEvClients, ch)
+		s.sseEvMu.Unlock()
+	}()
+
+	fmt.Fprint(w, "event: hello\ndata: ok\n\n")
+	flusher.Flush()
+
+	keep := time.NewTicker(25 * time.Second)
+	defer keep.Stop()
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case data := <-ch:
+			if !isAdmin {
+				var ev Event
+				if json.Unmarshal(data, &ev) == nil && ev.Actor != u.Username {
+					continue
+				}
+			}
+			fmt.Fprintf(w, "event: message\ndata: %s\n\n", data)
+			flusher.Flush()
+		case <-keep.C:
+			fmt.Fprint(w, ": keepalive\n\n")
+			flusher.Flush()
+		}
+	}
 }
 
 // handleGetMailSettings returns the current mail settings. Secrets (the SMTP

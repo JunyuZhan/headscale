@@ -151,7 +151,10 @@ const zh: Record<string, string> = {
   "Change password failed": "修改密码失败",
 
   // Activity log (audit)
-  "Activity log": "活动日志",  "Time": "时间",
+  "Activity log": "活动日志",
+  Notifications: "站内通知",
+  "Mark all read": "全部已读",
+  "No notifications": "暂无通知",  "Time": "时间",
   "Actor": "操作者",
   "Event": "事件",
   "Target": "对象",
