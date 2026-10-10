@@ -821,7 +821,7 @@ func proxyAllowed(method, rest string) bool {
 			rest == "/preauthkey" || rest == "/policy"
 	case http.MethodPost:
 		return rest == "/preauthkey" || rest == "/preauthkey/expire" || rest == "/policy/check" ||
-			strings.HasPrefix(rest, "/node/")
+			rest == "/user" || strings.HasPrefix(rest, "/node/")
 	case http.MethodPut:
 		return rest == "/policy"
 	case http.MethodDelete:
