@@ -13,6 +13,7 @@ import SelfService from "./pages/SelfService";
 import Invite from "./pages/Invite";
 import Events from "./pages/Events";
 import Settings from "./pages/Settings";
+import WebUsers from "./pages/WebUsers";
 
 function AppInner() {
   const [me, setMe] = useState<Me | null>(null);
@@ -51,6 +52,7 @@ function AppInner() {
           {me.role === "admin" && (
             <>
               <Route path="/users" element={<Users />} />
+              <Route path="/accounts" element={<WebUsers />} />
               <Route path="/keys" element={<PreAuthKeys />} />
               <Route path="/policy" element={<Policy />} />
               <Route path="/invite" element={<Invite />} />

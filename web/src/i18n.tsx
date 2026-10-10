@@ -70,6 +70,27 @@ const zh: Record<string, string> = {
   "Create failed": "创建失败",
   "Delete user": "删除用户",
 
+  // Console accounts (login accounts with passwords)
+  "Console accounts": "控制台账号",
+  "Login accounts for this web console (with passwords). Not the same as Headscale users.":
+    "登录本网页控制台的账号（带密码）。与 Headscale 用户（VPN 命名空间）不是一回事。",
+  "Account name": "账号名",
+  Password: "密码",
+  Role: "角色",
+  "Bind to Headscale user": "绑定 Headscale 用户",
+  "(admin sees all)": "（管理员可见全部）",
+  "Bound Headscale user": "绑定用户",
+  "Reset password": "重置密码",
+  "Password reset": "密码已重置",
+  "Password must be at least 6 characters": "密码至少 6 位",
+  "at least 6 characters": "至少 6 位",
+  "Pick a Headscale user to bind": "请选择要绑定的 Headscale 用户",
+  Created: "已创建",
+  "Delete account": "删除账号",
+  "No accounts": "暂无账号",
+  "Tip: a role=user account can only see and manage devices of its bound Headscale user.":
+    "提示：普通用户账号只能查看和管理其绑定 Headscale 用户下的设备。",
+
   // Pre-auth keys
   "New key created": "已创建新密钥",
   "Copy it now — it will not be shown again.": "请立即复制——密钥仅显示一次。",

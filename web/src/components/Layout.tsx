@@ -12,6 +12,7 @@ const baseNav = [
 
 const adminNav = [
   { to: "/users", key: "Users", end: false, icon: "users" },
+  { to: "/accounts", key: "Console accounts", end: false, icon: "accounts" },
   { to: "/keys", key: "Pre-auth keys", end: false, icon: "keys" },
   { to: "/policy", key: "ACL Policy", end: false, icon: "policy" },
   { to: "/invite", key: "Invite device", end: false, icon: "invite" },
@@ -55,6 +56,13 @@ function Icon({ name, className = "w-5 h-5" }: { name: string; className?: strin
       </>
     ),
     invite: <path d="M12 5v14M5 12h14" />,
+    accounts: (
+      <>
+        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M19 8v6M22 11h-6" />
+      </>
+    ),
     events: (
       <>
         <path d="M3 12h4l2 6 4-14 2 8h6" />

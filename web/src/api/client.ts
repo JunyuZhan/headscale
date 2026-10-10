@@ -49,6 +49,17 @@ export interface PreAuthKey {
   aclTags?: string[];
 }
 
+// A console login account (distinct from a Headscale user/namespace): it has a
+// password, a role, and is optionally bound to a Headscale user.
+export interface WebUser {
+  id: number;
+  username: string;
+  email?: string;
+  headscale_user: string;
+  role: "admin" | "user";
+  created_at: string;
+}
+
 export interface Invite {
   id: number;
   applicant: string;
@@ -296,6 +307,25 @@ export const api = {
 export const admin = {
   listInvites: () => backendFetch<Invite[]>("/admin/invites"),
   events: () => backendFetch<Event[]>("/admin/events"),
+  webUsers: () => backendFetch<WebUser[]>("/admin/webusers"),
+  createWebUser: (u: {
+    username: string;
+    password: string;
+    email?: string;
+    headscale_user?: string;
+    role: "admin" | "user";
+  }) =>
+    backendFetch<WebUser>("/admin/webusers", {
+      method: "POST",
+      body: JSON.stringify(u),
+    }),
+  deleteWebUser: (id: number) =>
+    backendFetch<{ ok: boolean }>(`/admin/webusers/${id}`, { method: "DELETE" }),
+  resetWebUserPassword: (id: number, newPassword: string) =>
+    backendFetch<{ ok: boolean }>(`/admin/webusers/${id}/password`, {
+      method: "POST",
+      body: JSON.stringify({ new: newPassword }),
+    }),
   mailSettings: () => backendFetch<MailSettingsResp>("/admin/settings/mail"),
   saveMailSettings: (m: MailSettings) =>
     backendFetch<MailSettingsResp>("/admin/settings/mail", {
