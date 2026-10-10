@@ -15,6 +15,7 @@ const adminNav = [
   { to: "/policy", key: "ACL Policy", end: false, icon: "policy" },
   { to: "/invite", key: "Invite device", end: false, icon: "invite" },
   { to: "/events", key: "Activity log", end: false, icon: "events" },
+  { to: "/settings", key: "Mail settings", end: false, icon: "mail" },
 ];
 
 function Icon({ name, className = "w-5 h-5" }: { name: string; className?: string }) {
@@ -56,6 +57,12 @@ function Icon({ name, className = "w-5 h-5" }: { name: string; className?: strin
     events: (
       <>
         <path d="M3 12h4l2 6 4-14 2 8h6" />
+      </>
+    ),
+    mail: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M3 7l9 6 9-6" />
       </>
     ),
     logout: (

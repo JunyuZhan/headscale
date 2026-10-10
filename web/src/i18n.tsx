@@ -172,6 +172,29 @@ const zh: Record<string, string> = {
     "将描述文件通过 AirDrop / 邮件 / 网盘发送到 iPhone 或 iPad，打开「设置 → 已下载的描述文件」安装，再打开 Tailscale 即可自动连接。",
   "Server": "服务器",
   "Auth key embedded": "密钥已内嵌于描述文件（仅显示一次，请妥善保管）",
+
+  // Mail / SMTP settings
+  "Mail settings": "邮件设置",
+  "Enable email alerts": "启用邮件告警",
+  "SMTP configuration": "SMTP 配置",
+  "SMTP host": "SMTP 主机",
+  "SMTP port": "SMTP 端口",
+  "SMTP username": "SMTP 用户名",
+  "SMTP password": "SMTP 密码",
+  "Leave blank to keep unchanged": "留空表示不修改",
+  "From address": "发件地址",
+  "Encryption": "加密方式",
+  "STARTTLS (587)": "STARTTLS（587）",
+  "Implicit TLS (465)": "隐式 TLS（465）",
+  "Resend API key": "Resend API 密钥",
+  "Resend from": "Resend 发件地址",
+  "Alert recipients": "告警收件人",
+  "comma-separated emails": "多个邮箱用逗号分隔",
+  "Test recipient": "测试收件邮箱",
+  "Send test email": "发送测试邮件",
+  "Test email sent": "测试邮件已发送",
+  "Test recipient required": "请填写测试收件邮箱",
+  "Mail not configured": "尚未配置邮件",
 };
 
 const STORAGE_KEY = "hs_lang";

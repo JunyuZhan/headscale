@@ -12,6 +12,7 @@ import Policy from "./pages/Policy";
 import SelfService from "./pages/SelfService";
 import Invite from "./pages/Invite";
 import Events from "./pages/Events";
+import Settings from "./pages/Settings";
 
 function AppInner() {
   const [me, setMe] = useState<Me | null>(null);
@@ -54,6 +55,7 @@ function AppInner() {
               <Route path="/policy" element={<Policy />} />
               <Route path="/invite" element={<Invite />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/settings" element={<Settings />} />
             </>
           )}
         </Route>

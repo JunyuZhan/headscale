@@ -69,6 +69,31 @@ type Event struct {
 	IP        string    `json:"ip"`
 }
 
+// Setting is a small key/value store for runtime-tunable configuration edited
+// from the web console (currently the mail/SMTP settings). Values are JSON.
+type Setting struct {
+	Key       string    `gorm:"primaryKey" json:"key"`
+	Value     string    `json:"value"` // JSON-encoded payload
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// MailSettings holds the email/SMTP configuration. It is persisted as a Setting
+// (key "mail") so admins can configure mail from the console instead of editing
+// environment variables. SMTP_PASSWORD / RESEND_API_KEY are secrets and are
+// never returned by GET (only presence flags are).
+type MailSettings struct {
+	Enabled        bool   `json:"enabled"`
+	SMTPHost       string `json:"smtp_host"`
+	SMTPPort       string `json:"smtp_port"`
+	SMTPUsername   string `json:"smtp_username"`
+	SMTPPassword   string `json:"smtp_password"`
+	SMTPFrom       string `json:"smtp_from"`
+	SMTPTLS        string `json:"smtp_tls"` // starttls (587) | ssl (465)
+	ResendAPIKey   string `json:"resend_api_key"`
+	ResendFrom     string `json:"resend_from"`
+	ResendNotifyTo string `json:"resend_notify_to"`
+}
+
 // Session is an authenticated browser session identified by a random token
 // stored in an HttpOnly cookie.
 type Session struct {
@@ -171,6 +196,11 @@ type Server struct {
 	knownNodes   map[string]bool   // node id -> was online last seen
 	knownOnline  map[string]bool   // node id -> last known online state
 	notifiedKeys map[string]bool   // preauthkey id -> expiry alert already sent
+
+	// mailMu guards the runtime-editable mail settings (loaded from the DB,
+	// overridable from the web console without restarting the process).
+	mailMu sync.RWMutex
+	mail   *MailSettings
 }
 
 func NewServer(cfg *Config) (*Server, error) {
@@ -184,7 +214,7 @@ func NewServer(cfg *Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening web db: %w", err)
 	}
-	if err := gormDB.AutoMigrate(&WebUser{}, &Session{}, &Invite{}, &Event{}); err != nil {
+	if err := gormDB.AutoMigrate(&WebUser{}, &Session{}, &Invite{}, &Event{}, &Setting{}); err != nil {
 		return nil, fmt.Errorf("migrating web db: %w", err)
 	}
 
@@ -197,12 +227,79 @@ func NewServer(cfg *Config) (*Server, error) {
 		knownNodes:   map[string]bool{},
 		knownOnline:  map[string]bool{},
 		notifiedKeys: map[string]bool{},
+		mail:         &MailSettings{},
 	}
 
 	if err := s.bootstrap(); err != nil {
 		return nil, err
 	}
+	if err := s.loadMailSettings(); err != nil {
+		return nil, fmt.Errorf("loading mail settings: %w", err)
+	}
 	return s, nil
+}
+
+// loadMailSettings reads persisted mail settings, seeding them from the
+// environment on first run so existing deployments keep working without a UI
+// edit. Safe to call once at startup.
+func (s *Server) loadMailSettings() error {
+	var row Setting
+	if err := s.db.Where("key = ?", "mail").First(&row).Error; err == nil {
+		m := &MailSettings{}
+		if json.Unmarshal([]byte(row.Value), m) == nil {
+			s.mailMu.Lock()
+			s.mail = m
+			s.mailMu.Unlock()
+			return nil
+		}
+		// corrupt JSON -> fall through and reseed
+	}
+	// Seed from environment variables (first run / legacy deployment).
+	m := &MailSettings{
+		Enabled:        s.cfg.ResendAPIKey != "" || s.cfg.SMTPHost != "",
+		SMTPHost:       s.cfg.SMTPHost,
+		SMTPPort:       s.cfg.SMTPPort,
+		SMTPUsername:   s.cfg.SMTPUsername,
+		SMTPPassword:   s.cfg.SMTPPassword,
+		SMTPFrom:       s.cfg.SMTPFrom,
+		SMTPTLS:        s.cfg.SMTPTLS,
+		ResendAPIKey:   s.cfg.ResendAPIKey,
+		ResendFrom:     s.cfg.ResendFrom,
+		ResendNotifyTo: s.cfg.ResendNotifyTo,
+	}
+	if m.SMTPTLS == "" {
+		m.SMTPTLS = "starttls"
+	}
+	s.mailMu.Lock()
+	s.mail = m
+	s.mailMu.Unlock()
+	return s.saveMailSettings(m)
+}
+
+// saveMailSettings persists the mail settings row (upsert).
+func (s *Server) saveMailSettings(m *MailSettings) error {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	row := Setting{Key: "mail", Value: string(b), UpdatedAt: time.Now()}
+	var existing Setting
+	if err := s.db.Where("key = ?", "mail").First(&existing).Error; err == nil {
+		existing.Value = row.Value
+		existing.UpdatedAt = row.UpdatedAt
+		return s.db.Save(&existing).Error
+	}
+	return s.db.Create(&row).Error
+}
+
+// effectiveMail returns the current mail settings (never nil).
+func (s *Server) effectiveMail() *MailSettings {
+	s.mailMu.RLock()
+	defer s.mailMu.RUnlock()
+	if s.mail == nil {
+		return &MailSettings{}
+	}
+	return s.mail
 }
 
 // bootstrap creates the initial admin account if none exist yet.
@@ -267,6 +364,14 @@ func (s *Server) Handler() http.Handler {
 		protected.Route("/ui/api/admin/events", func(rt chi.Router) {
 			rt.Use(middlewareOf(s.requireAdmin))
 			rt.Get("/", s.handleListEvents)
+		})
+
+		// Admin-only mail settings (runtime-editable SMTP/Resend config).
+		protected.Route("/ui/api/admin/settings/mail", func(rt chi.Router) {
+			rt.Use(middlewareOf(s.requireAdmin))
+			rt.Get("/", s.handleGetMailSettings)
+			rt.Put("/", s.handlePutMailSettings)
+			rt.Post("/test", s.handleTestMail)
 		})
 
 		// Self-service: the logged-in user's own devices + key generation.
@@ -933,124 +1038,126 @@ func (s *Server) recordEvent(r *http.Request, eventType, target, detail string) 
 // otherwise the Resend REST API is used as a fallback. Best-effort: failures
 // are logged but never returned to the caller so they cannot break the action.
 func (s *Server) sendEmail(to, subject, htmlBody string) {
-	if s.cfg.SMTPHost != "" {
-		s.sendEmailSMTP(to, subject, htmlBody)
+	m := s.effectiveMail()
+	if !m.Enabled {
+		log.Printf("webbackend: email skipped (mail disabled): %s -> %s", to, subject)
 		return
 	}
-	if s.cfg.ResendAPIKey != "" {
-		s.sendEmailResend(to, subject, htmlBody)
+	if m.SMTPHost != "" {
+		s.sendEmailSMTP(to, subject, htmlBody, m)
+		return
+	}
+	if m.ResendAPIKey != "" {
+		s.sendEmailResend(to, subject, htmlBody, m)
 		return
 	}
 	log.Printf("webbackend: email skipped (no SMTP_HOST and no RESEND_API_KEY): %s -> %s", to, subject)
 }
 
 // sendEmailResend delivers via the Resend REST API (fallback path).
-func (s *Server) sendEmailResend(to, subject, htmlBody string) {
-	key := s.cfg.ResendAPIKey
+func (s *Server) sendEmailResend(to, subject, htmlBody string, m *MailSettings) error {
+	key := m.ResendAPIKey
 	if key == "" {
-		log.Printf("webbackend: email skipped (RESEND_API_KEY not set): %s -> %s", to, subject)
-		return
+		return fmt.Errorf("RESEND_API_KEY not set")
+	}
+	from := m.ResendFrom
+	if from == "" {
+		from = "Headscale <no-reply@sclink.dev>"
 	}
 	payload, _ := json.Marshal(map[string]any{
-		"from":    s.cfg.ResendFrom,
+		"from":    from,
 		"to":      []string{to},
 		"subject": subject,
 		"html":    htmlBody,
 	})
 	req, err := http.NewRequest(http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(payload))
 	if err != nil {
-		log.Printf("webbackend: email build error: %v", err)
-		return
+		return fmt.Errorf("email build error: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+key)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		log.Printf("webbackend: email send error: %v", err)
-		return
+		return fmt.Errorf("email send error: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
-		log.Printf("webbackend: email send failed (%d): %s", resp.StatusCode, string(b))
-		return
+		return fmt.Errorf("email send failed (%d): %s", resp.StatusCode, string(b))
 	}
 	log.Printf("webbackend: email sent (resend api) to %s: %s", to, subject)
+	return nil
 }
 
 // sendEmailSMTP delivers via an SMTP server (preferred path). It supports both
 // STARTTLS (port 587, default) and implicit TLS (port 465). For Resend the
 // username is the literal "resend" and the password is the API key.
-func (s *Server) sendEmailSMTP(to, subject, htmlBody string) {
-	from := s.cfg.SMTPFrom
+func (s *Server) sendEmailSMTP(to, subject, htmlBody string, m *MailSettings) error {
+	from := m.SMTPFrom
 	if from == "" {
-		from = s.cfg.ResendFrom
+		from = m.ResendFrom
 	}
 	if from == "" {
 		from = "no-reply@sclink.dev"
 	}
-	host := s.cfg.SMTPHost
-	addr := net.JoinHostPort(host, s.cfg.SMTPPort)
+	host := m.SMTPHost
+	port := m.SMTPPort
+	if port == "" {
+		port = "587"
+	}
+	addr := net.JoinHostPort(host, port)
 
 	var c *smtp.Client
 	var err error
-	if s.cfg.SMTPTLS == "ssl" {
+	if m.SMTPTLS == "ssl" {
 		tlsConn, derr := tls.Dial("tcp", addr, &tls.Config{ServerName: host})
 		if derr != nil {
-			log.Printf("webbackend: smtp ssl dial error: %v", derr)
-			return
+			return fmt.Errorf("smtp ssl dial error: %w", derr)
 		}
 		c, err = smtp.NewClient(tlsConn, host)
 	} else {
 		c, err = smtp.Dial(addr)
 		if err != nil {
-			log.Printf("webbackend: smtp dial error: %v", err)
-			return
+			return fmt.Errorf("smtp dial error: %w", err)
 		}
 		if ok, _ := c.Extension("STARTTLS"); ok {
 			if terr := c.StartTLS(&tls.Config{ServerName: host}); terr != nil {
-				log.Printf("webbackend: smtp starttls error: %v", terr)
 				c.Close()
-				return
+				return fmt.Errorf("smtp starttls error: %w", terr)
 			}
 		}
 	}
 	defer c.Close()
 
-	if s.cfg.SMTPUsername != "" {
-		pass := s.cfg.SMTPPassword
+	if m.SMTPUsername != "" {
+		pass := m.SMTPPassword
 		if pass == "" {
-			pass = s.cfg.ResendAPIKey // reuse Resend key if SMTP_PASSWORD unset
+			pass = m.ResendAPIKey // reuse Resend key if SMTP_PASSWORD unset
 		}
-		auth := smtp.PlainAuth("", s.cfg.SMTPUsername, pass, host)
+		auth := smtp.PlainAuth("", m.SMTPUsername, pass, host)
 		if aerr := c.Auth(auth); aerr != nil {
-			log.Printf("webbackend: smtp auth error: %v", aerr)
-			return
+			return fmt.Errorf("smtp auth error: %w", aerr)
 		}
 	}
 	if err := c.Mail(from); err != nil {
-		log.Printf("webbackend: smtp mail-from error: %v", err)
-		return
+		return fmt.Errorf("smtp mail-from error: %w", err)
 	}
 	if err := c.Rcpt(to); err != nil {
-		log.Printf("webbackend: smtp rcpt error: %v", err)
-		return
+		return fmt.Errorf("smtp rcpt error: %w", err)
 	}
 	w, err := c.Data()
 	if err != nil {
-		log.Printf("webbackend: smtp data error: %v", err)
-		return
+		return fmt.Errorf("smtp data error: %w", err)
 	}
 	msg := buildMailMessage(from, to, subject, htmlBody)
 	if _, err := w.Write([]byte(msg)); err != nil {
-		log.Printf("webbackend: smtp write error: %v", err)
-		return
+		return fmt.Errorf("smtp write error: %w", err)
 	}
 	if err := w.Close(); err != nil {
-		log.Printf("webbackend: smtp close error: %v", err)
-		return
+		return fmt.Errorf("smtp close error: %w", err)
 	}
 	log.Printf("webbackend: smtp email sent to %s: %s", to, subject)
+	return nil
 }
 
 // buildMailMessage assembles a minimal RFC 5322 message with an HTML body and
@@ -1072,7 +1179,7 @@ func buildMailMessage(from, to, subject, htmlBody string) string {
 // alertRecipients returns the addresses that should receive administrative
 // alerts: any admin web user with an email set, falling back to
 // RESEND_NOTIFY_TO when no admin has an email configured.
-func (s *Server) alertRecipients() []string {
+func (s *Server) alertRecipients(m *MailSettings) []string {
 	seen := map[string]bool{}
 	var out []string
 	var admins []WebUser
@@ -1084,7 +1191,7 @@ func (s *Server) alertRecipients() []string {
 			}
 		}
 	}
-	for _, e := range strings.Split(s.cfg.ResendNotifyTo, ",") {
+	for _, e := range strings.Split(m.ResendNotifyTo, ",") {
 		e = strings.TrimSpace(e)
 		if e != "" && !seen[e] {
 			seen[e] = true
@@ -1096,7 +1203,11 @@ func (s *Server) alertRecipients() []string {
 
 // notifyAdmins sends an alert email to every configured recipient.
 func (s *Server) notifyAdmins(subject, htmlBody string) {
-	for _, to := range s.alertRecipients() {
+	m := s.effectiveMail()
+	if !m.Enabled {
+		return
+	}
+	for _, to := range s.alertRecipients(m) {
 		s.sendEmail(to, subject, htmlBody)
 	}
 }
@@ -1158,6 +1269,93 @@ func (s *Server) handleMyEvents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, events)
 }
 
+// handleGetMailSettings returns the current mail settings. Secrets (the SMTP
+// password and Resend API key) are never returned; only presence flags are.
+func (s *Server) handleGetMailSettings(w http.ResponseWriter, r *http.Request) {
+	m := s.effectiveMail()
+	s.mailMu.RLock()
+	out := *m
+	s.mailMu.RUnlock()
+	out.SMTPPassword = ""
+	out.ResendAPIKey = ""
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mail":              out,
+		"has_smtp_password": m.SMTPPassword != "",
+		"has_resend_key":    m.ResendAPIKey != "",
+	})
+}
+
+// handlePutMailSettings updates and persists the mail settings. Empty secret
+// fields are left unchanged, so an admin can update other fields without
+// re-typing the password.
+func (s *Server) handlePutMailSettings(w http.ResponseWriter, r *http.Request) {
+	var in MailSettings
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	s.mailMu.RLock()
+	cur := *s.mail
+	s.mailMu.RUnlock()
+	if in.SMTPPassword == "" {
+		in.SMTPPassword = cur.SMTPPassword
+	}
+	if in.ResendAPIKey == "" {
+		in.ResendAPIKey = cur.ResendAPIKey
+	}
+	if in.SMTPTLS == "" {
+		in.SMTPTLS = "starttls"
+	}
+	if in.SMTPPort == "" {
+		in.SMTPPort = "587"
+	}
+	s.mailMu.Lock()
+	s.mail = &in
+	s.mailMu.Unlock()
+	if err := s.saveMailSettings(&in); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	out := in
+	out.SMTPPassword = ""
+	out.ResendAPIKey = ""
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mail":              out,
+		"has_smtp_password": in.SMTPPassword != "",
+		"has_resend_key":    in.ResendAPIKey != "",
+	})
+}
+
+// handleTestMail sends a real test email to the provided address and reports
+// the result, so admins can verify the SMTP/Resend configuration works.
+func (s *Server) handleTestMail(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		To string `json:"to"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.To == "" {
+		writeError(w, http.StatusBadRequest, "missing 'to'")
+		return
+	}
+	m := s.effectiveMail()
+	if !m.Enabled || (m.SMTPHost == "" && m.ResendAPIKey == "") {
+		writeError(w, http.StatusBadRequest, "mail not configured")
+		return
+	}
+	var err error
+	if m.SMTPHost != "" {
+		err = s.sendEmailSMTP(body.To, "Headscale 邮件配置测试",
+			"<p>这是一封来自 Headscale 控制台的测试邮件。若你收到了它，说明 SMTP 邮件配置正确。</p>", m)
+	} else {
+		err = s.sendEmailResend(body.To, "Headscale 邮件配置测试",
+			"<p>这是一封来自 Headscale 控制台的测试邮件。若你收到了它，说明 Resend 邮件配置正确。</p>", m)
+	}
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 // recordProxyEvent records audit events for mutating proxy calls (node tag /
 // rename / expire / delete, policy apply). Read-only calls are not recorded.
 func (s *Server) recordProxyEvent(r *http.Request, rest string) {
@@ -1187,8 +1385,8 @@ func (s *Server) recordProxyEvent(r *http.Request, rest string) {
 // always records these as audit events; email alerts are sent on top only when
 // Resend is configured, so the reliability trail works even without email.
 func (s *Server) startWatcher() {
-	if s.cfg.ResendAPIKey == "" {
-		log.Printf("webbackend: email alerts disabled (no SMTP_HOST and no RESEND_API_KEY); watcher still records join/offline events")
+	if m := s.effectiveMail(); !m.Enabled || (m.SMTPHost == "" && m.ResendAPIKey == "") {
+		log.Printf("webbackend: email alerts disabled (mail not configured); watcher still records join/offline events")
 	}
 	go func() {
 		ticker := time.NewTicker(60 * time.Second)

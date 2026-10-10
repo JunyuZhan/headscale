@@ -78,6 +78,28 @@ export interface Event {
   ip: string;
 }
 
+// Mail / SMTP configuration (runtime-editable from the console). The SMTP
+// password and Resend API key are write-only on the backend: GET returns them
+// empty, and PUT keeps the existing secret when the field is left blank.
+export interface MailSettings {
+  enabled: boolean;
+  smtp_host: string;
+  smtp_port: string;
+  smtp_username: string;
+  smtp_password: string;
+  smtp_from: string;
+  smtp_tls: string; // starttls | ssl
+  resend_api_key: string;
+  resend_from: string;
+  resend_notify_to: string;
+}
+
+export interface MailSettingsResp {
+  mail: MailSettings;
+  has_smtp_password: boolean;
+  has_resend_key: boolean;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body !== undefined && !headers.has("Content-Type")) {
@@ -268,4 +290,15 @@ export const api = {
 export const admin = {
   listInvites: () => backendFetch<Invite[]>("/admin/invites"),
   events: () => backendFetch<Event[]>("/admin/events"),
+  mailSettings: () => backendFetch<MailSettingsResp>("/admin/settings/mail"),
+  saveMailSettings: (m: MailSettings) =>
+    backendFetch<MailSettingsResp>("/admin/settings/mail", {
+      method: "PUT",
+      body: JSON.stringify(m),
+    }),
+  testMail: (to: string) =>
+    backendFetch<{ ok: boolean; error?: string }>("/admin/settings/mail/test", {
+      method: "POST",
+      body: JSON.stringify({ to }),
+    }),
 };

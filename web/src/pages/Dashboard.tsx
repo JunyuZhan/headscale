@@ -19,10 +19,10 @@ export default function Dashboard() {
     if (me.role === "admin") calls.push(api.listUsers());
     Promise.all(calls)
       .then(([n, k, u]) => {
-        const nodeList = (n as { nodes: { connected?: boolean }[] }).nodes;
+        const nodeList = (n as { nodes: { online?: boolean; connected?: boolean }[] }).nodes;
         setStats({
           nodes: nodeList.length,
-          online: nodeList.filter((x) => x.connected).length,
+          online: nodeList.filter((x) => x.online ?? x.connected).length,
           keys: (k as { preAuthKeys: unknown[] }).preAuthKeys.length,
           users: u ? (u as { users: unknown[] }).users.length : undefined,
         });

@@ -9,7 +9,7 @@ function StatusDot({ online }: { online: boolean }) {
       <span
         className={`w-2 h-2 rounded-full ${
           online
-            ? "bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60"
+            ? "bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60 status-pulse"
             : "bg-slate-500"
         }`}
       />
