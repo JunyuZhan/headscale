@@ -79,6 +79,7 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 | `166037b1` | **安全 + 可靠性套件**：① 审计日志（`Event` 模型 + `/admin/events` + `/me/events` + 新增「活动日志」页，登录/建删账号/改密/建密钥/套用策略/节点操作/代理均落库）；② 邮件告警（Resend REST，best-effort）；③ **登录限流**（同 IP+用户名 5 次失败锁 15 分钟→429）；④ **改密即注销该用户全部会话**；⑤ **节点上下线监控**（`startWatcher` 每 60s 轮询 Headscale，记录 node_join/node_offline，不依赖邮件密钥即运行）。 |
 | `d5abb16c` | **SMTP 发信支持**：新增 SMTP 通道（STARTTLS 587 / 隐式 TLS 465，Resend 用户名恒为 `resend`、密码=API key），配置 `SMTP_HOST` 时优先走 SMTP，否则回退 Resend REST；`SMTP_PASSWORD` 缺省复用 `RESEND_API_KEY`。本地用 Go `net/smtp` 对 `smtp.resend.com:587` 实跑 STARTTLS 握手（TLS1.3、证书 OK）+ 确认服务端提供 AUTH。 |
 | `e94ec0e8` | **邮件设置后台可配 + Dashboard 在线数修复 + 在线灯呼吸动画**：① 新增 `Setting` 表持久化邮件配置，启动从 env 播种进库（现有 `RESEND_API_KEY`/`SMTP_*` 部署无需改 `.env` 即沿用）；`GET/PUT /admin/settings/mail`（密码/密钥掩码、空值不覆盖）+ `POST /mail/test` 真实发测试信并回报成败；新增「邮件设置」页（admin 侧边栏：启用开关/SMTP/Resend/告警收件人/发送测试邮件）；② **修复 Dashboard 在线数恒为 0**（原用 `x.connected` → 改 `x.online ?? x.connected`）；③ 在线绿灯加 `.status-pulse` 呼吸动画。 |
+| `ca58ae66` | **节点列表 SSE 实时推送**：① 后端新增 SSE hub + `startNodeStream`（5s 轮询 Headscale `/api/v1/node`，按 `(id,online)` 签名变化才广播，非阻塞投递，慢客户端不影响广播）+ 端点 `GET /ui/api/nodes/stream`（复用会话 Cookie 鉴权、hello 事件、25s keepalive、`X-Accel-Buffering:no` 让 host nginx 不缓冲）；② 前端新增 `web/src/lib/useNodeStream.ts`（EventSource + 断线 5s 重连 + 卸载清理）；Nodes 页接入并加「实时」绿点指示，Dashboard 计数器随上下线自动刷新，无需手动点「刷新」。 |
 
 #### 2026-10-10 真机验证要点（五轮自检）
 本轮在 debian/hk/aly/VPS 真实组网环境完成 5 轮、每轮落实验证，核心结论：
@@ -101,7 +102,7 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 - 节点审批（registered vs 待审）、设备分享（sharing machine to another user）。
 - DNS 设置、DERP 地图、OIDC 用户注册的 Web 配置（OIDC 本体支持但本 fork 的 Web 未接入）。
 - **metrics 可视化**（`/metrics` 已开但无界面；审计日志 / 活动日志页 `166037b1` 已实现，不在此列）。
-- 节点列表实时推送（当前为手动刷新）。
+- **节点列表实时推送**：✅ 已实现（`ca58ae66`，SSE），不再在此列。
 - **移动端描述文件真机装机验证**：iOS `.mobileconfig` / Android 托管配置代码（`6b7bfe0b`）已生成并经 plist/JSON 解析校验，但环境无移动设备，**未做真机安装验证**。
 
 ---
@@ -113,8 +114,56 @@ Web 界面只是它的"遥控器"，底层能力都来自这里：
 - **移动端描述文件**：✅ 代码已完成（`6b7bfe0b`，iOS `.mobileconfig` + Android 托管配置，公共库 `web/src/lib/mobileconfig.ts`），⚠️ 真机装机未验证。
 - **安全 + 可靠性套件**：✅ 已完成（`166037b1`）：审计日志 / 活动日志页、邮件告警（Resend + SMTP）、登录限流（5 次失败锁 15 分钟）、改密注销全部会话、节点上下线监控。
 - **邮件设置后台可配**：✅ 已完成（`e94ec0e8`）：「邮件设置」页（admin）可配置 SMTP/Resend/告警收件人 + 一键发测试邮件；配置持久化到 `Setting` 表，启动时从 env 播种。
+- **节点列表实时推送（SSE）**：✅ 已完成（`ca58ae66`）：`GET /ui/api/nodes/stream`，5s 轮询节点签名变化即推送，Nodes/Dashboard 自动刷新。
 - **登录页等 UI 细节打磨**：⬜ 用户原则「先功能后美化」，仍排在功能完善之后（Dashboard/Nodes/Users/Keys/Policy 已统一美化，登录页等细化待做）。
 - **Exit Node 开关**：有人提需求再做（on-demand）。
 - **节点审批**：已决定**不做**（采用 token 自动入网）。
 - **DNS / DERP / OIDC 配置界面**：继续暂缓。
-- **metrics 可视化 / 节点列表实时推送**：最后做（审计/活动日志页已先行）。
+- **metrics 可视化**：⏳ 仍排最后。
+
+### 配置方式一览（哪些后台可配、哪些仍硬编码）
+
+> 澄清：本项目**绝大部分业务参数仍硬编码于代码**，只有**邮件设置**做成了后台可配（用户要求「想要邮件告警的就配置一下」）。改动硬编码项需改代码并重建镜像。
+
+| 配置项 | 位置 | 是否后台可配 | 生效方式 |
+|---|---|---|---|
+| SMTP / Resend / 告警收件人 / 启用开关 | `Setting` 表（key `mail`） | ✅ **后台可配**（「邮件设置」页） | UI 保存即生效，无需重启 |
+| Headscale 地址 / API Key / 监听地址 / DB 路径 / Cookie Secure / 初始管理员 | 环境变量（`docker-compose.yml`） | ⬜ 仅 env | 改 env + 重建容器 |
+| 会话时长 `12h` | `LoadConfig`（写死） | ❌ 硬编码 | 改代码 + 重建 |
+| 密钥过期默认 `24h` / 上限 `30d` | `handleCreateSelfKey`（写死） | ❌ 硬编码 | 改代码 + 重建 |
+| ACL 预设 `ISOLATED` / `MESH` | `web/src/pages/Policy.tsx`（TS 常量） | ❌ 硬编码（但可在 UI 切预设并保存到 Headscale） | 改代码 + 重建 |
+| tag 拥有者 `owner@hsnet.sclink.dev`、`tag:server` 约定 | 前端常量 + 文案 | ❌ 硬编码 | 改代码 + 重建 |
+
+- **不做的**：通用「系统设置」配置页（用户定「不做配置页，先完善功能」；邮件是唯一例外）。
+
+---
+
+## 六、开发任务清单（2026-10-10 梳理，持续更新）
+
+用户原则：**先功能后美化**；**不做通用配置页**（邮件设置是例外，已后台可配）。下分三类。
+
+### A. 代码已完成，仅差真实环境验证（非开发，是测试）
+| # | 任务 | 卡点 | 状态 |
+|---|---|---|---|
+| A1 | 邮件真实发信端到端验证 | 缺 `SMTP_PASSWORD`（= Resend API key）+ 测试收件人 | ⬜ 待用户给 key |
+| A2 | 移动端真机装机（iOS `.mobileconfig` / Android 托管配置） | 环境无移动设备 | ⬜ 待真机 |
+| A3 | 真内网服务器用邀请命令入网并打 `tag:server`（debian/hk/aly） | 待真实服务器 | ⬜ 待真实环境 |
+
+### B. 尚未开发的功能（按价值排序）
+| # | 任务 | 说明 / 依赖 | 状态 |
+|---|---|---|---|
+| B1 | **节点列表实时推送（SSE）** | 复用已跑的 watcher，加 `EventSource` 端点，节点上下线自动刷新页面；无需外部资源 | ✅ 已完成（`ca58ae66`） |
+| B2 | 子网路由 Web 批准/禁用 + Exit Node 开关 | 当前靠 `autoApprovers`/CLI，无界面；Exit Node 用户定"有人提需求再做" | ⬜ 未开始 |
+| B3 | 设备分享（share machine to another user） | Headscale 原生支持，UI 未暴露 | ⬜ 未开始 |
+| B4 | DNS / DERP 地图 / OIDC 注册 Web 配置 | 用户定"继续暂缓" | ⬜ 暂缓 |
+| B5 | 硬编码业务参数后台化（可选） | 会话时长 `12h`、密钥过期 `24h/30d`、ACL 预设 ISOLATED/MESH、`tag:server` 约定、tag 拥有者 `owner@...` 仍写死；邮件已例外后台化 | ⬜ 待定（默认不做） |
+
+### C. UI 打磨（排最后）
+| # | 任务 | 状态 |
+|---|---|---|
+| C1 | 登录页细化 + 整体视觉一致性收尾 | ⬜ 待功能完善后 |
+
+### 下一步
+- ✅ **B1 节点实时推送已完成并上线**（`ca58ae66`）。
+- A 类三项依赖用户提供的资源（key / 真机 / 真服务器），无法自主推进。
+- 次优可自主推进：**B2 子网路由批准/禁用（Web 化）**（Exit Node 仍 on-demand）。
