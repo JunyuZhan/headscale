@@ -49,6 +49,15 @@ const zhHans: Record<string, string> = {
   "Verifying you are human…": "正在验证你是真人…",
   "Protected by Cloudflare Turnstile": "由 Cloudflare Turnstile 提供人机验证保护",
 
+  // First-run password setup (out-of-box default admin)
+  "First-run setup": "首次部署设置",
+  "Set a password for the administrator": "设置管理员密码",
+  "This is the first launch. Set a password for the default admin account to start using the console.": "首次部署：为默认管理员账号设置密码后即可开始使用。",
+  "Welcome": "欢迎",
+  "Passwords do not match": "两次输入的密码不一致",
+  "Create password": "创建密码",
+  "Default admin account": "默认管理员账号",
+
   // Nodes
   Name: "名称",
   User: "用户",
@@ -284,6 +293,15 @@ const zhHant: Record<string, string> = {
   "Human verification failed, please try again": "人機驗證未通過，請重試",
   "Verifying you are human…": "正在驗證你是真人…",
   "Protected by Cloudflare Turnstile": "由 Cloudflare Turnstile 提供人機驗證保護",
+
+  // First-run password setup (out-of-box default admin)
+  "First-run setup": "首次部署設定",
+  "Set a password for the administrator": "設定管理員密碼",
+  "This is the first launch. Set a password for the default admin account to start using the console.": "首次部署：為預設管理員帳號設定密碼後即可開始使用。",
+  "Welcome": "歡迎",
+  "Passwords do not match": "兩次輸入的密碼不一致",
+  "Create password": "建立密碼",
+  "Default admin account": "預設管理員帳號",
 
   // Nodes
   Name: "名稱",

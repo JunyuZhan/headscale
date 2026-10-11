@@ -53,6 +53,9 @@ type WebUser struct {
 	Email          string    `json:"email,omitempty"` // optional; used for alert emails
 	HeadscaleUser  string    `json:"headscale_user"`  // empty for admin (sees all)
 	Role           string    `json:"role"`            // "admin" | "user"
+	// MustChangePassword marks the first-run default admin, created with no
+	// password, that must set one on its first login (the "out of box" flow).
+	MustChangePassword bool `json:"-"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
@@ -379,33 +382,53 @@ func (s *Server) effectiveMail() *MailSettings {
 	return s.mail
 }
 
-// bootstrap creates the initial admin account if none exist yet.
+// bootstrap creates the initial admin account if none exist yet. Two modes:
+//   1. WEBUI_BOOTSTRAP_ADMIN="user:pass" set -> create that admin (legacy).
+//   2. No users AND no bootstrap env -> create a default "admin" with NO
+//      password; the first login is forced into a "set your password" flow
+//      (handleSetup). This makes a fresh deployment usable out of the box
+//      without pre-configuring a credential.
 func (s *Server) bootstrap() error {
 	var count int64
 	if err := s.db.Model(&WebUser{}).Count(&count).Error; err != nil {
 		return err
 	}
-	if count > 0 || s.cfg.BootstrapAdmin == "" {
+	if count > 0 {
 		return nil
 	}
-	parts := strings.SplitN(s.cfg.BootstrapAdmin, ":", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return fmt.Errorf("WEBUI_BOOTSTRAP_ADMIN must be 'user:pass'")
+	if s.cfg.BootstrapAdmin != "" {
+		parts := strings.SplitN(s.cfg.BootstrapAdmin, ":", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return fmt.Errorf("WEBUI_BOOTSTRAP_ADMIN must be 'user:pass'")
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(parts[1]), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		admin := WebUser{
+			Username:      parts[0],
+			PasswordHash:  string(hash),
+			HeadscaleUser: "",
+			Role:          "admin",
+		}
+		if err := s.db.Create(&admin).Error; err != nil {
+			return err
+		}
+		log.Printf("webbackend: created bootstrap admin user %q", parts[0])
+		return nil
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(parts[1]), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
+	// Out-of-box default admin (no password yet); first login sets it.
 	admin := WebUser{
-		Username:      parts[0],
-		PasswordHash:  string(hash),
-		HeadscaleUser: "",
-		Role:          "admin",
+		Username:           "admin",
+		PasswordHash:       "",
+		HeadscaleUser:      "",
+		Role:               "admin",
+		MustChangePassword: true,
 	}
 	if err := s.db.Create(&admin).Error; err != nil {
 		return err
 	}
-	log.Printf("webbackend: created bootstrap admin user %q", parts[0])
+	log.Printf("webbackend: created default 'admin' with no password; first login sets it")
 	return nil
 }
 
@@ -421,6 +444,9 @@ func (s *Server) Handler() http.Handler {
 	// Public, unauthenticated: tells the login page whether to render the
 	// Turnstile widget and with which (public) site key + action.
 	r.Get("/ui/api/auth/config", s.handleAuthConfig)
+	// Public, unauthenticated: first-run password setup for the default admin
+	// (created with no password). Gated by the same IP rate limit + Turnstile.
+	r.Post("/ui/api/auth/setup", s.handleSetup)
 
 	r.Group(func(protected chi.Router) {
 		protected.Use(middlewareOf(s.withSession))
@@ -626,6 +652,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
+	// First-run admin that has not set a password yet: the login page should be
+	// in "setup" mode, not the password form. Reject here so we never run
+	// bcrypt against an empty hash (which would otherwise fail as a wrong
+	// password and feed the brute-force guard).
+	if u.MustChangePassword && u.PasswordHash == "" {
+		s.recordEvent(r, "login_fail", body.Username, "setup required")
+		writeError(w, http.StatusUnauthorized, "setup required")
+		return
+	}
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(body.Password)); err != nil {
 		s.guardFail(key)
 		s.recordEvent(r, "login_fail", body.Username, "wrong password")
@@ -645,11 +680,84 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 // Turnstile is enabled and, if so, the (public) site key and action the widget
 // must render with. Unauthenticated — it's fetched by the login page.
 func (s *Server) handleAuthConfig(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"turnstile_enabled":  s.turnstileEnabled,
 		"turnstile_site_key": s.turnstileSiteKey,
 		"turnstile_action":   s.turnstileAction,
-	})
+		"setup_required":     false,
+	}
+	// First-run: a default admin exists that has never set a password.
+	var pending WebUser
+	if err := s.db.Where("must_change_password = ? AND (password_hash = ? OR password_hash IS NULL)", true, "").First(&pending).Error; err == nil {
+		resp["setup_required"] = true
+		resp["setup_username"] = pending.Username
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleSetup sets the password for the first-run default admin account, which
+// is created with no password (MustChangePassword). It is the "out of box" path:
+// a fresh deployment's first visit lands in setup mode instead of the normal
+// login. Only an account that is explicitly awaiting setup (MustChangePassword
+// && empty password) may use this endpoint — a normal account must go through
+// login + change-password, so this can't be used to hijack an existing account.
+func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Username       string `json:"username"`
+		NewPassword    string `json:"new_password"`
+		TurnstileToken string `json:"turnstile_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "bad request")
+		return
+	}
+
+	ip := clientIP(r)
+	if !s.loginIPRateLimit(ip) {
+		writeError(w, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
+		return
+	}
+	if s.turnstileEnabled {
+		if err := s.turnstile.Verify(r.Context(), body.TurnstileToken, ip); err != nil {
+			writeError(w, http.StatusBadRequest, "人机验证未通过，请重试")
+			return
+		}
+	}
+	if len(body.NewPassword) < 6 {
+		writeError(w, http.StatusBadRequest, "密码至少 6 位")
+		return
+	}
+
+	var u WebUser
+	if err := s.db.Where("username = ?", body.Username).First(&u).Error; err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid account")
+		return
+	}
+	if !u.MustChangePassword || u.PasswordHash != "" {
+		// Not a first-run setup account: refuse. Avoids turning this into a
+		// password-reset bypass for ordinary accounts.
+		writeError(w, http.StatusForbidden, "this account cannot be set up this way")
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "hash error")
+		return
+	}
+	if err := s.db.Model(&u).Updates(map[string]any{
+		"password_hash":        string(hash),
+		"must_change_password": false,
+	}).Error; err != nil {
+		writeError(w, http.StatusInternalServerError, "update error")
+		return
+	}
+	if err := s.newSession(w, &u); err != nil {
+		writeError(w, http.StatusInternalServerError, "session error")
+		return
+	}
+	s.recordEventAs(u.Username, ip, "setup_admin_password", body.Username, "")
+	writeJSON(w, http.StatusOK, map[string]any{"username": u.Username, "role": u.Role, "headscale_user": u.HeadscaleUser})
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {

@@ -167,6 +167,10 @@ export interface AuthConfig {
   turnstile_enabled: boolean;
   turnstile_site_key: string;
   turnstile_action: string;
+  // First-run: a default admin exists that has never set a password, so the
+  // login page should render the "set your password" form instead of login.
+  setup_required?: boolean;
+  setup_username?: string;
 }
 
 export const auth = {
@@ -184,6 +188,16 @@ export const auth = {
     }),
   logout: () => authFetch<{ ok: boolean }>("/logout", { method: "POST" }),
   me: () => authFetch<Me>("/me"),
+  // First-run password setup for the default admin (created with no password).
+  setup: (username: string, newPassword: string, turnstileToken?: string) =>
+    authFetch<Me>("/setup", {
+      method: "POST",
+      body: JSON.stringify(
+        turnstileToken
+          ? { username, new_password: newPassword, turnstile_token: turnstileToken }
+          : { username, new_password: newPassword },
+      ),
+    }),
 };
 
 // Calls the web backend's own endpoints (auth + self-service), distinct from the
