@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { auth, self, type Me } from "../api/client";
 import { useI18n, type Lang } from "../i18n";
 import Notifications from "./Notifications";
+import ThemeToggle from "./ThemeToggle";
 
 const baseNav = [
   { to: "/", key: "Overview", end: true, icon: "overview" },
@@ -272,13 +273,13 @@ export default function Layout({
           onClick={() => setPwOpen(false)}
         >
           <div
-            className="bg-paper border border-mist rounded-xl p-5 w-80 space-y-3 shadow-[0_16px_48px_-12px_rgba(0,7,16,0.28)]"
+            className="bg-paper border border-mist rounded-xl p-5 w-80 space-y-3 shadow-[var(--shadow-modal)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-ink">
               {t("Change password")}
             </h3>
-            {pwError && <div className="text-sm text-[#a32d2d]">{pwError}</div>}
+            {pwError && <div className="text-sm text-[color:var(--danger)]">{pwError}</div>}
             {pwMsg && <div className="text-sm text-live">{pwMsg}</div>}
             <form onSubmit={changePassword} className="space-y-2">
               <input
@@ -315,12 +316,13 @@ export default function Layout({
       )}
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div className="shrink-0 bg-paper/85 backdrop-blur border-b border-mist px-8 py-3 flex items-center justify-between">
+        <div className="shrink-0 bg-[color:var(--header-bg)] backdrop-blur border-b border-mist px-8 py-3 flex items-center justify-between">
           <div className="text-[13px] text-graphite">
             {t(me.role === "admin" ? "Administration" : "Workspace")}
           </div>
           <div className="flex items-center gap-2">
             <Notifications isAdmin={isAdmin} />
+            <ThemeToggle />
             <div className="relative">
               <button
                 onClick={() => setLangOpen((o) => !o)}

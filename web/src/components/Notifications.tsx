@@ -7,13 +7,13 @@ import { useEventStream } from "../lib/useEventStream";
 // These are semantic encodings (severity), not brand accents.
 function badgeClass(type: string): string {
   if (type.startsWith("login_fail") || type === "login_blocked")
-    return "bg-[#fcebeb] text-[#a32d2d]";
+    return "bg-[color:var(--danger-bg)] text-[color:var(--danger)]";
   if (type === "node_offline" || type === "key_expiring")
-    return "bg-[#faeeda] text-[#854f0b]";
+    return "bg-[color:var(--warning-bg)] text-[color:var(--warning)]";
   if (type === "delete_user" || type === "node_delete" || type === "reset_password")
-    return "bg-[#fff3ec] text-[#c94500]";
+    return "bg-[color:var(--info-bg)] text-[color:var(--info)]";
   if (type === "login" || type === "node_join" || type === "create_key" || type === "create_user")
-    return "bg-[#e6f5ee] text-[#0b6b45]";
+    return "bg-[color:var(--success-bg)] text-[color:var(--success)]";
   return "bg-fog text-graphite";
 }
 
@@ -45,7 +45,7 @@ function label(type: string): string {
   return TYPE_LABEL[type] ?? type;
 }
 
-const FLOATING_SHADOW = "shadow-[0_16px_48px_-12px_rgba(0,7,16,0.28)]";
+const FLOATING_SHADOW = "shadow-[var(--shadow-modal)]";
 
 export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
   const { t } = useI18n();
@@ -168,7 +168,7 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
                 {events.slice(0, 30).map((e) => (
                   <li
                     key={e.id}
-                    className="px-3 py-2 border-b border-mist/50 last:border-0"
+                    className="px-3 py-2 border-b border-[color:var(--mist-50)] last:border-0"
                   >
                     <div className="flex items-center gap-2">
                       <span

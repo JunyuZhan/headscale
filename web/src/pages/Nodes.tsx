@@ -105,10 +105,10 @@ export default function Nodes() {
   }) => {
     const cls =
       tone === "red"
-        ? "text-[#a32d2d] hover:bg-[#fbeaea]"
+        ? "text-[color:var(--danger)] hover:bg-[color:var(--danger-bg)]"
         : tone === "amber"
-          ? "text-[#9a6700] hover:bg-[#fbf3e6]"
-          : "text-ember hover:bg-[#fff3ec]";
+          ? "text-[color:var(--warning)] hover:bg-[color:var(--warning-bg)]"
+          : "text-ember hover:bg-[color:var(--info-bg)]";
     return (
       <button
         onClick={onClick}
@@ -148,7 +148,7 @@ export default function Nodes() {
           </button>
         </div>
       </div>
-      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] mb-3 text-sm">{error}</div>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -239,8 +239,8 @@ export default function Nodes() {
                 <td className="p-3 text-steel font-mono text-xs">—</td>
                 <td className="p-3">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full border border-[#f0e0c8]" />
-                    <span className="text-[#9a6700]">{t("Pending join")}</span>
+                    <span className="w-2 h-2 rounded-full border border-[color:var(--warning-bg)]" />
+                    <span className="text-[color:var(--warning)]">{t("Pending join")}</span>
                   </span>
                 </td>
                 <td className="p-3 text-steel text-xs">—</td>
@@ -288,7 +288,7 @@ export default function Nodes() {
                       if (window.confirm(`${t("Clear expired invites")}？`))
                         run(t("Clear failed"), () => admin.purgeExpiredInvites());
                     }}
-                    className="text-xs text-[#9a6700] border border-[#f0e0c8] rounded-xl px-2.5 py-1.5 hover:bg-[#fbf3e6] transition-colors"
+                    className="text-xs text-[color:var(--warning)] border border-[color:var(--warning-bg)] rounded-xl px-2.5 py-1.5 hover:bg-[color:var(--warning-bg)] transition-colors"
                   >
                     {t("Clear expired")}
                   </button>
@@ -350,7 +350,7 @@ export default function Nodes() {
                                 admin.deleteInvite(iv.id),
                               )
                             }
-                            className="text-[#a32d2d] hover:bg-[#fbeaea] px-2 py-0.5 rounded-md text-xs transition-colors"
+                            className="text-[color:var(--danger)] hover:bg-[color:var(--danger-bg)] px-2 py-0.5 rounded-md text-xs transition-colors"
                           >
                             {t("Delete")}
                           </button>

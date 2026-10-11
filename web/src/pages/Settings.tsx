@@ -96,7 +96,7 @@ export default function Settings() {
         {t("Enable email alerts")} · SMTP / Resend
       </p>
 
-      {err && <div className="text-[#a32d2d] mb-4 text-sm">{err}</div>}
+      {err && <div className="text-[color:var(--danger)] mb-4 text-sm">{err}</div>}
       {msg && <div className="text-live mb-4 text-sm">{msg}</div>}
 
       <form onSubmit={save} className="space-y-6">

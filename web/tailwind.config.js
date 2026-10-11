@@ -5,18 +5,21 @@ export default {
     extend: {
       colors: {
         // Brex design language — "white concrete, single ember".
+        // Base + semantic tokens are CSS-variable driven so the whole UI
+        // switches between light (:root) and dark ([data-theme="dark"]) by
+        // flipping one attribute on <html>; JSX class names stay untouched.
         ember: { DEFAULT: "#ff5900", 600: "#e64f00", 700: "#c94500" },
         abyss: "#000710",
-        carbon: "#15191e",
-        ink: "#000000",
-        paper: "#ffffff",
-        fog: "#f3f3f7",
-        mist: "#b9bbc6",
-        steel: "#8b8d98",
-        pewter: "#6f737b",
-        graphite: "#60646c",
+        carbon: "var(--auth-panel)",
+        ink: "var(--ink)",
+        paper: "var(--paper)",
+        fog: "var(--fog)",
+        mist: "var(--mist)",
+        steel: "var(--steel)",
+        pewter: "var(--pewter)",
+        graphite: "var(--graphite)",
         // Semantic status encoding (data, not brand decoration).
-        live: { DEFAULT: "#0f9d63", soft: "#e6f5ee" },
+        live: { DEFAULT: "var(--success)", soft: "var(--success-bg)" },
         // Interim alias: pages not yet migrated keep rendering coherently
         // instead of falling back to the old blue.
         brand: {

@@ -2,6 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   Theme tokens — every colour is a CSS variable. Light is the default in
+   :root; [data-theme="dark"] overrides for the dark theme. A tiny inline
+   script in index.html sets data-theme on <html> before paint, so the whole
+   UI switches between themes without touching a single JSX class name.
+   ========================================================================= */
+:root {
+  --canvas: #ffffff;
+  --paper: #ffffff;
+  --fog: #f3f3f7;
+  --mist: #b9bbc6;
+  --mist-50: rgba(185, 187, 198, 0.5);
+  --mist-60: rgba(185, 187, 198, 0.6);
+  --ink: #000000;
+  --graphite: #60646c;
+  --pewter: #6f737b;
+  --steel: #8b8d98;
+
+  --danger: #a32d2d;
+  --danger-bg: #fbeaea;
+  --warning: #9a6700;
+  --warning-bg: #fbf3e6;
+  --info: #c94500;
+  --info-bg: #fff3ec;
+  --success: #0b6b45;
+  --success-bg: #e6f5ee;
+  --live-40: rgba(15, 157, 99, 0.4);
+
+  --banner-bg: #fff4e6;
+  --banner-border: #ffd9a8;
+  --banner-text: #7a4a12;
+
+  --header-bg: rgba(255, 255, 255, 0.85);
+
+  --scrollbar: #d8d8de;
+  --scrollbar-hover: #b9bbc6;
+  --selection: rgba(255, 89, 0, 0.18);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-modal: 0 16px 48px -12px rgba(0, 7, 16, 0.28);
+  /* Login brand panel: soft deep blue-grey, replacing the old near-black carbon. */
+  --auth-panel: #1c2630;
+}
+
+[data-theme="dark"] {
+  --canvas: #0c0e13;
+  --paper: #161a21;
+  --fog: #1e232c;
+  --mist: #2a313c;
+  --mist-50: rgba(42, 49, 60, 0.5);
+  --mist-60: rgba(42, 49, 60, 0.6);
+  --ink: #f1f3f8;
+  --graphite: #aab0bd;
+  --pewter: #9aa0ad;
+  --steel: #8b8d98;
+
+  --danger: #ff8585;
+  --danger-bg: rgba(255, 90, 90, 0.12);
+  --warning: #ffc24d;
+  --warning-bg: rgba(255, 193, 77, 0.12);
+  --info: #ff9a5c;
+  --info-bg: rgba(255, 89, 0, 0.14);
+  --success: #4ad295;
+  --success-bg: rgba(15, 157, 99, 0.16);
+  --live-40: rgba(15, 157, 99, 0.4);
+
+  --banner-bg: rgba(255, 89, 0, 0.12);
+  --banner-border: rgba(255, 138, 77, 0.28);
+  --banner-text: #ffc24d;
+
+  --header-bg: rgba(22, 26, 33, 0.85);
+
+  --scrollbar: #2a313c;
+  --scrollbar-hover: #3a424f;
+  --selection: rgba(255, 89, 0, 0.3);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 16px 48px -12px rgba(0, 0, 0, 0.65);
+  --auth-panel: #11151b;
+}
+
 html,
 body,
 #root {
@@ -9,12 +88,11 @@ body,
   margin: 0;
 }
 
-/* White concrete canvas: near-pure white, tight engineered type. */
 body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: #ffffff;
-  color: #000000;
+  background: var(--canvas);
+  color: var(--ink);
   letter-spacing: -0.011em;
   font-feature-settings: "calt" 0, "liga" 0, "cv01", "cv10", "ss03";
   -webkit-font-smoothing: antialiased;
@@ -24,7 +102,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(255, 89, 0, 0.18);
+  background: var(--selection);
 }
 
 /* Scrollbars */
@@ -36,20 +114,20 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d8d8de;
+  background: var(--scrollbar);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #b9bbc6;
+  background: var(--scrollbar-hover);
   background-clip: content-box;
 }
 
-/* Auth page: keep the class (in case of stale references) but make it the
-   flat Paper canvas Brex uses — no decorative gradient. */
+/* Auth page: keep the class (in case of stale references) but make it follow
+   the active theme canvas. */
 .auth-bg {
-  background: #ffffff;
+  background: var(--canvas);
 }
 
 /* Reusable focus ring — the single ember is the only chromatic action cue. */
@@ -62,8 +140,8 @@ body {
 /* Card surface: Paper on the canvas, defined by a 1px Mist hairline only.
    No drop shadow — Brex reserves shadow for detached (floating) UI. */
 .card {
-  background: #ffffff;
-  border: 1px solid #b9bbc6;
+  background: var(--paper);
+  border: 1px solid var(--mist);
   border-radius: 12px;
 }
 

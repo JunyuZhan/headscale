@@ -105,7 +105,7 @@ export default function SelfService() {
         </p>
       </div>
 
-      {error && <div className="text-[#a32d2d] text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] text-sm">{error}</div>}
 
       {!isAdmin && (
         <div className="card p-4">
@@ -156,7 +156,7 @@ export default function SelfService() {
 
         {isAdmin &&
           (users.length === 0 ? (
-            <p className="text-sm text-[#9a6700]">
+            <p className="text-sm text-[color:var(--warning)]">
               {t("Create a Headscale user first")}
             </p>
           ) : (

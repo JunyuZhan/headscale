@@ -109,6 +109,10 @@ export default function TurnstileWidget({
     const id = ts.render(hostRef.current, {
       sitekey: siteKey,
       action,
+      // Pin the widget to the light theme: the default ("auto") follows the
+      // visitor's OS colour scheme, which made Turnstile render its dark skin
+      // inside our always-light form card.
+      theme: "light",
       callback: (token: string) => cbRef.current(token),
       "expired-callback": () => expRef.current?.(),
       "error-callback": () => errRef.current?.(),
@@ -137,7 +141,7 @@ export default function TurnstileWidget({
   if (loadError) {
     return (
       <div className="flex flex-col items-center gap-2 py-2">
-        <span className="text-[12px] text-[#a32d2d]">
+        <span className="text-[12px] text-[color:var(--danger)]">
           {t("Human verification failed, please try again")}
         </span>
         <button

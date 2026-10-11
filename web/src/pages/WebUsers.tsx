@@ -100,7 +100,7 @@ export default function WebUsers() {
         )}
       </p>
 
-      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] mb-3 text-sm">{error}</div>}
       {ok && <div className="text-live mb-3 text-sm">{ok}</div>}
 
       <form onSubmit={create} className="card p-4 mb-5 space-y-3">
@@ -202,7 +202,7 @@ export default function WebUsers() {
                   <span
                     className={`inline-block rounded-full px-2 py-0.5 text-[11px] ${
                       a.role === "admin"
-                        ? "bg-[#fff3ec] text-ember"
+                        ? "bg-[color:var(--info-bg)] text-ember"
                         : "bg-fog text-graphite"
                     }`}
                   >
@@ -214,13 +214,13 @@ export default function WebUsers() {
                 <td className="p-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => resetPw(a.id, a.username)}
-                    className="text-[#9a6700] hover:bg-[#fbf3e6] px-2 py-1 rounded-md text-xs font-medium transition-colors"
+                    className="text-[color:var(--warning)] hover:bg-[color:var(--warning-bg)] px-2 py-1 rounded-md text-xs font-medium transition-colors"
                   >
                     {t("Reset password")}
                   </button>
                   <button
                     onClick={() => del(a.id, a.username)}
-                    className="text-[#a32d2d] hover:bg-[#fbeaea] px-2 py-1 rounded-md text-xs font-medium transition-colors"
+                    className="text-[color:var(--danger)] hover:bg-[color:var(--danger-bg)] px-2 py-1 rounded-md text-xs font-medium transition-colors"
                   >
                     {t("Delete")}
                   </button>

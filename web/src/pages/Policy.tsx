@@ -224,10 +224,10 @@ export default function Policy() {
           </button>
         </div>
       </div>
-      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] mb-3 text-sm">{error}</div>}
       {msg && <div className="text-live mb-3 text-sm">{msg}</div>}
       {exists === false && (
-        <div className="text-[#9a6700] mb-3 text-sm">
+        <div className="text-[color:var(--warning)] mb-3 text-sm">
           {t("No policy is stored yet. Saving will create one.")}
         </div>
       )}
@@ -291,7 +291,7 @@ export default function Policy() {
                     <span
                       className={
                         r.action === "deny"
-                          ? "text-[#a32d2d]"
+                          ? "text-[color:var(--danger)]"
                           : "text-live"
                       }
                     >

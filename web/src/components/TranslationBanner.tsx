@@ -34,7 +34,7 @@ export default function TranslationBanner() {
   if (lang !== "zh-Hans" || !translated || dismissed) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-[#fff4e6] border-b border-[#ffd9a8] px-6 py-2.5 flex items-start gap-3 text-[13px] text-[#7a4a12]">
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-[color:var(--banner-bg)] border-b border-[color:var(--banner-border)] px-6 py-2.5 flex items-start gap-3 text-[13px] text-[color:var(--banner-text)]">
       <svg viewBox="0 0 24 24" className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -44,7 +44,7 @@ export default function TranslationBanner() {
       </div>
       <button
         onClick={() => setDismissed(true)}
-        className="text-[#7a4a12] hover:text-ink shrink-0 text-sm leading-none"
+        className="text-[color:var(--banner-text)] hover:text-ink shrink-0 text-sm leading-none"
         title="关闭提示"
       >
         ✕

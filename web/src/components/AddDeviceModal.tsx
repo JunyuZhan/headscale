@@ -92,7 +92,7 @@ export default function AddDeviceModal({
       onClick={onClose}
     >
       <div
-        className="bg-paper border border-mist rounded-xl w-full max-w-2xl my-6 shadow-[0_16px_48px_-12px_rgba(0,7,16,0.28)]"
+        className="bg-paper border border-mist rounded-xl w-full max-w-2xl my-6 shadow-[var(--shadow-modal)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-mist">
@@ -111,7 +111,7 @@ export default function AddDeviceModal({
         </div>
 
         <div className="p-5 space-y-4">
-          {error && <div className="text-[#a32d2d] text-sm">{error}</div>}
+          {error && <div className="text-[color:var(--danger)] text-sm">{error}</div>}
 
           <form onSubmit={generate} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

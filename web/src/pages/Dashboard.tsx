@@ -65,7 +65,7 @@ export default function Dashboard() {
           : "在「我的设备」中查看你的设备并生成接入密钥。"}
       </p>
 
-      {error && <div className="text-sm text-[#a32d2d] mb-6">{error}</div>}
+      {error && <div className="text-sm text-[color:var(--danger)] mb-6">{error}</div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {cards.map((c) => (

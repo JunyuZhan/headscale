@@ -11,6 +11,17 @@
       rel="stylesheet"
     />
     <title>Headscale · Web UI</title>
+    <script>
+      // Set the theme before first paint to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var pref = localStorage.getItem("hs-theme") || "system";
+          var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var resolved = pref === "system" ? (dark ? "dark" : "light") : pref;
+          document.documentElement.dataset.theme = resolved;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root" translate="no"></div>

@@ -117,7 +117,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-full flex">
       {/* Brand panel (Brex "carbon" surface, hidden on small screens). */}
-      <div className="hidden md:flex md:w-[46%] lg:w-1/2 bg-carbon text-paper flex-col justify-between p-12 lg:p-16">
+      <div className="hidden md:flex md:w-[46%] lg:w-1/2 bg-[color:var(--auth-panel)] text-paper flex-col justify-between p-12 lg:p-16">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-ember flex items-center justify-center font-semibold text-paper text-lg">
             H
@@ -152,7 +152,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
         {mode === "setup" ? (
           <form
             onSubmit={submitSetup}
-            className="w-full max-w-[400px] bg-paper border border-mist rounded-2xl p-8 space-y-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+            className="w-full max-w-[400px] bg-paper border border-mist rounded-2xl p-8 space-y-6 shadow-[var(--shadow-card)]"
           >
             <div className="space-y-1">
               <span className="text-[12px] uppercase tracking-heading text-steel">
@@ -218,7 +218,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
               </div>
             )}
 
-            {error && <div className="text-sm text-[#a32d2d]">{error}</div>}
+            {error && <div className="text-sm text-[color:var(--danger)]">{error}</div>}
 
             <button
               type="submit"
@@ -231,7 +231,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
         ) : (
           <form
             onSubmit={submitLogin}
-            className="w-full max-w-[400px] bg-paper border border-mist rounded-2xl p-8 space-y-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+            className="w-full max-w-[400px] bg-paper border border-mist rounded-2xl p-8 space-y-6 shadow-[var(--shadow-card)]"
           >
             {/* Compact brand mark for small screens (panel hidden there). */}
             <div className="flex md:hidden items-center gap-3 mb-2">
@@ -280,7 +280,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
               </div>
             )}
 
-            {error && <div className="text-sm text-[#a32d2d]">{error}</div>}
+            {error && <div className="text-sm text-[color:var(--danger)]">{error}</div>}
 
             <button
               type="submit"

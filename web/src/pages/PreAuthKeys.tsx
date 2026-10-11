@@ -102,10 +102,10 @@ export default function PreAuthKeys() {
         {t("Pre-auth keys let devices join without a web login.")}
       </p>
 
-      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] mb-3 text-sm">{error}</div>}
 
       {newKey?.key && (
-        <div className="card border-live/40 p-4 mb-5">
+        <div className="card border-[color:var(--live-40)] p-4 mb-5">
           <div className="text-live font-medium text-sm">
             {t("New key created")}
           </div>
@@ -222,7 +222,7 @@ export default function PreAuthKeys() {
                 </td>
                 <td className="p-3 text-right whitespace-nowrap">
                   <button
-                    className="text-[#9a6700] hover:bg-[#fbf3e6] px-2 py-1 rounded-md text-xs font-medium transition-colors"
+                    className="text-[color:var(--warning)] hover:bg-[color:var(--warning-bg)] px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() =>
                       run(t("Expire failed"), () => api.expirePreAuthKey(k.id))
                     }
@@ -230,7 +230,7 @@ export default function PreAuthKeys() {
                     {t("Expire")}
                   </button>
                   <button
-                    className="text-[#a32d2d] hover:bg-[#fbeaea] px-2 py-1 rounded-md text-xs font-medium transition-colors"
+                    className="text-[color:var(--danger)] hover:bg-[color:var(--danger-bg)] px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() =>
                       run(t("Delete failed"), () => api.deletePreAuthKey(k.id))
                     }

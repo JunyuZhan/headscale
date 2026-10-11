@@ -48,7 +48,7 @@ export default function Users() {
         {t("Headscale users — each maps to a set of joinable devices.")}
       </p>
 
-      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] mb-3 text-sm">{error}</div>}
 
       <form onSubmit={create} className="card p-4 mb-5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -120,7 +120,7 @@ export default function Users() {
                 <td className="p-3 text-graphite">{u.email ?? "—"}</td>
                 <td className="p-3 text-right">
                   <button
-                    className="text-[#a32d2d] hover:bg-[#fbeaea] px-2 py-1 rounded-md text-xs font-medium transition-colors"
+                    className="text-[color:var(--danger)] hover:bg-[color:var(--danger-bg)] px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() => {
                       if (window.confirm(`${t("Delete user")} ${u.name}？`))
                         run(t("Delete failed"), () => api.deleteUser(u.id));

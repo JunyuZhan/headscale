@@ -5,9 +5,9 @@ import { useI18n } from "../i18n";
 // Maps an event type to a Tailwind badge color.
 function badgeClass(type: string): string {
   if (type.startsWith("login_fail") || type === "login_blocked")
-    return "bg-[#fbeaea] text-[#a32d2d]";
+    return "bg-[color:var(--danger-bg)] text-[color:var(--danger)]";
   if (type === "node_offline" || type === "key_expiring")
-    return "bg-[#fbf3e6] text-[#9a6700]";
+    return "bg-[color:var(--warning-bg)] text-[color:var(--warning)]";
   if (type === "delete_user" || type === "node_delete" || type === "reset_password")
     return "bg-orange-500/15 text-orange-300";
   if (type === "login" || type === "node_join" || type === "create_key" || type === "create_user")
@@ -44,7 +44,7 @@ export default function Events() {
         </button>
       </div>
 
-      {error && <div className="text-[#a32d2d] text-sm">{error}</div>}
+      {error && <div className="text-[color:var(--danger)] text-sm">{error}</div>}
 
       <div className="card overflow-hidden">
         {loading ? (
@@ -65,7 +65,7 @@ export default function Events() {
             </thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.id} className="border-b border-mist/60 text-graphite">
+                <tr key={e.id} className="border-b border-[color:var(--mist-60)] text-graphite">
                   <td className="p-3 whitespace-nowrap text-graphite">
                     {new Date(e.time).toLocaleString()}
                   </td>
