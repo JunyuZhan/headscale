@@ -504,8 +504,11 @@ export function LangProvider({ children }: { children: ReactNode }) {
     setLangState(l);
   };
 
-  const t = (s: string) =>
-    lang === "en" ? s : (zhHant[s] ?? zhHans[s] ?? s);
+  const t = (s: string) => {
+    if (lang === "en") return s;
+    const dict = lang === "zh-Hant" ? zhHant : zhHans;
+    return dict[s] ?? s;
+  };
 
   return (
     <LangCtx.Provider value={{ lang, setLang, t }}>
