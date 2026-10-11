@@ -2016,10 +2016,10 @@ func (s *Server) scanKeys(alert bool) {
 				s.watchMu.Lock()
 				s.notifiedKeys[k.ID] = true
 				s.watchMu.Unlock()
-				s.recordEvent(nil, "key_expiring", u.Name, "key "+k.ID+" expires "+k.Expiration.Format(time.RFC3339))
+				s.recordEvent(nil, "key_expiring", u.Name, "key "+k.ID+" expires "+k.Expiration.In(cstZone).Format("2006-01-02 15:04:05"))
 				if alert {
 					s.notifyAdmins("密钥即将过期: "+u.Name,
-						"<p>用户 <b>"+u.Name+"</b> 的密钥将于 "+k.Expiration.Format(time.RFC3339)+" 过期。</p>")
+						"<p>用户 <b>"+u.Name+"</b> 的密钥将于 "+k.Expiration.In(cstZone).Format("2006-01-02 15:04:05")+" 过期。</p>")
 				}
 			}
 		}
@@ -2027,6 +2027,10 @@ func (s *Server) scanKeys(alert bool) {
 }
 
 // ---- Headscale helpers ----------------------------------------------------
+
+// cstZone is UTC+8 (Asia/Shanghai); used only for human-facing timestamps
+// (emails, event details). Storage and API fields stay UTC/RFC3339.
+var cstZone = time.FixedZone("CST", 8*3600)
 
 func (s *Server) headscaleNodes(hsUser string) (any, error) {
 	req, err := http.NewRequest(http.MethodGet,

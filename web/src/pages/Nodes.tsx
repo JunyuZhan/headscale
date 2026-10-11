@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { admin, api, type Invite, type Me, type Node } from "../api/client";
 import { useI18n } from "../i18n";
 import { useNodeStream } from "../lib/useNodeStream";
+import { formatDateTime } from "../lib/datetime";
 import AddDeviceModal from "../components/AddDeviceModal";
 
 function StatusDot({ online }: { online: boolean }) {
@@ -25,8 +26,7 @@ function StatusDot({ online }: { online: boolean }) {
 
 function fmt(ts?: string): string {
   if (!ts) return "—";
-  const d = new Date(ts);
-  return Number.isNaN(d.getTime()) ? ts : d.toLocaleString();
+  return formatDateTime(ts);
 }
 
 export default function Nodes() {

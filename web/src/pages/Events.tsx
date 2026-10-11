@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { admin, type Event } from "../api/client";
 import { useI18n } from "../i18n";
+import { formatDateTime } from "../lib/datetime";
 
 // Maps an event type to a Tailwind badge color.
 function badgeClass(type: string): string {
@@ -67,7 +68,7 @@ export default function Events() {
               {events.map((e) => (
                 <tr key={e.id} className="border-b border-[color:var(--mist-60)] text-graphite">
                   <td className="p-3 whitespace-nowrap text-graphite">
-                    {new Date(e.time).toLocaleString()}
+                    {formatDateTime(e.time)}
                   </td>
                   <td className="p-3 whitespace-nowrap">{e.actor}</td>
                   <td className="p-3">
