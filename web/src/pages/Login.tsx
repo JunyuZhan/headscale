@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { auth, type AuthConfig } from "../api/client";
 import { useI18n } from "../i18n";
 import TurnstileWidget from "../components/TurnstileWidget";
+import Logo from "../components/Logo";
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
   const { t } = useI18n();
@@ -119,9 +120,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
       {/* Brand panel (Brex "carbon" surface, hidden on small screens). */}
       <div className="hidden md:flex md:w-[46%] lg:w-1/2 bg-[color:var(--auth-panel)] text-[color:var(--auth-panel-fg)] flex-col justify-between p-12 lg:p-16">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-ember flex items-center justify-center font-semibold text-[color:var(--on-ember)] text-lg">
-            H
-          </div>
+          <Logo tile size={40} />
           <span className="text-lg font-semibold tracking-heading">Headscale</span>
           <span className="text-sm text-[color:var(--auth-panel-subtle)]">Web UI</span>
         </div>
@@ -235,9 +234,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           >
             {/* Compact brand mark for small screens (panel hidden there). */}
             <div className="flex md:hidden items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-ember flex items-center justify-center font-semibold text-[color:var(--on-ember)] text-base">
-                H
-              </div>
+              <Logo tile size={36} />
               <span className="text-base font-semibold tracking-heading">
                 Headscale · Web UI
               </span>

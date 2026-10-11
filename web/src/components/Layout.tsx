@@ -4,6 +4,7 @@ import { auth, self, type Me } from "../api/client";
 import { useI18n, type Lang } from "../i18n";
 import Notifications from "./Notifications";
 import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
 
 const baseNav = [
   { to: "/", key: "Overview", end: true, icon: "overview" },
@@ -216,9 +217,7 @@ export default function Layout({
       <aside className="w-64 shrink-0 bg-paper border-r border-mist flex flex-col">
         <div className="px-5 pt-6 pb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-ink flex items-center justify-center font-semibold text-paper text-lg">
-              H
-            </div>
+            <Logo tile size={40} />
             <div>
               <div className="text-ink font-semibold leading-tight">
                 Headscale
