@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { auth, self, type Me } from "../api/client";
-import { useI18n } from "../i18n";
+import { useI18n, type Lang } from "../i18n";
 import Notifications from "./Notifications";
 
 const baseNav = [
@@ -170,6 +170,18 @@ export default function Layout({
   const [pwError, setPwError] = useState("");
   const [pwMsg, setPwMsg] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+
+  const LANG_FULL: Record<Lang, string> = {
+    "zh-Hans": "简体中文",
+    "zh-Hant": "繁體中文",
+    en: "English",
+  };
+  const LANG_SHORT: Record<Lang, string> = {
+    "zh-Hans": "简",
+    "zh-Hant": "繁",
+    en: "EN",
+  };
 
   const changePassword = async (e: FormEvent) => {
     e.preventDefault();
@@ -309,14 +321,42 @@ export default function Layout({
           </div>
           <div className="flex items-center gap-2">
             <Notifications isAdmin={isAdmin} />
-            <button
-              onClick={() => setLang(lang === "zh" ? "en" : "zh")}
-              className="flex items-center gap-1.5 text-xs text-graphite border border-mist rounded-xl px-2.5 py-1.5 hover:bg-fog hover:text-ink transition-colors"
-              title="Language / 语言"
-            >
-              <Icon name="globe" className="w-4 h-4" />
-              {lang === "zh" ? "EN" : "中文"}
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setLangOpen((o) => !o)}
+                className="flex items-center gap-1.5 text-xs text-graphite border border-mist rounded-xl px-2.5 py-1.5 hover:bg-fog hover:text-ink transition-colors"
+                title="语言 / Language"
+              >
+                <Icon name="globe" className="w-4 h-4" />
+                {LANG_SHORT[lang]}
+              </button>
+              {langOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setLangOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-1 w-36 bg-paper border border-mist rounded-xl overflow-hidden z-50">
+                    {(["zh-Hans", "zh-Hant", "en"] as Lang[]).map((l) => (
+                      <button
+                        key={l}
+                        onClick={() => {
+                          setLang(l);
+                          setLangOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-fog ${
+                          l === lang
+                            ? "text-ember font-semibold"
+                            : "text-ink"
+                        }`}
+                      >
+                        {LANG_FULL[l]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-auto">

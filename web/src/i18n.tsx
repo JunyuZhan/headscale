@@ -5,12 +5,13 @@ import {
   type ReactNode,
 } from "react";
 
-export type Lang = "zh" | "en";
+export type Lang = "zh-Hans" | "zh-Hant" | "en";
 
-// English strings are used as keys. Chinese overrides live in `zh`.
-// Anything missing from `zh` falls back to the (English) key, so the
-// UI degrades gracefully and English is always available via the switcher.
-const zh: Record<string, string> = {
+// English strings are used as keys. Chinese overrides live in `zhHans`
+// (Simplified) and `zhHant` (Traditional). Anything missing falls back to
+// the (English) key, so the UI degrades gracefully and every language is
+// reachable via the switcher.
+const zhHans: Record<string, string> = {
   // Layout / navigation
   Overview: "总览",
   Nodes: "节点",
@@ -189,7 +190,8 @@ const zh: Record<string, string> = {
   "Mark all read": "全部已读",
   "No notifications": "暂无通知",
   "Machine id used in ACLs and join commands": "机器标识：ACL 与入网命令中使用的用户名（英文小写）",
-  "e.g. real name / nickname": "例如：姓名 / 昵称",  "Time": "时间",
+  "e.g. real name / nickname": "例如：姓名 / 昵称",
+  "Time": "时间",
   "Actor": "操作者",
   "Event": "事件",
   "Target": "对象",
@@ -235,12 +237,245 @@ const zh: Record<string, string> = {
   "Mail not configured": "尚未配置邮件",
 };
 
+// Traditional Chinese mirror of `zhHans`. Same keys, Traditional glyphs.
+const zhHant: Record<string, string> = {
+  // Layout / navigation
+  Overview: "總覽",
+  Nodes: "節點",
+  "My devices": "我的裝置",
+  Users: "使用者",
+  "Pre-auth keys": "預授權金鑰",
+  "ACL Policy": "存取控制策略",
+  Workspace: "工作區",
+  Administration: "管理",
+  "Log out": "登出",
+  admin: "管理員",
+  user: "一般使用者",
+
+  // Self-service
+  "Joined devices": "已加入的裝置",
+  "No devices yet.": "尚無裝置。",
+  "Generate join key (self-service)": "產生加入金鑰（自助入網）",
+  "Target user": "目標使用者",
+  "Create a Headscale user first": "請先於「使用者」頁面建立 Headscale 使用者",
+  "Join command (key shown once)": "加入命令（金鑰僅顯示一次）",
+  "Copy command": "複製命令",
+
+  // Generic
+  "Loading…": "載入中…",
+  Refresh: "重新整理",
+  "Signing in…": "登入中…",
+  "Sign in": "登入",
+
+  // Nodes
+  Name: "名稱",
+  User: "使用者",
+  Addresses: "位址",
+  Status: "狀態",
+  "Last seen": "最近活動",
+  Tags: "標籤",
+  Actions: "操作",
+  online: "線上",
+  offline: "離線",
+  Live: "即時",
+  Rename: "重新命名",
+  Expire: "過期",
+  Delete: "刪除",
+  "No nodes": "尚無節點",
+  "New name": "新名稱",
+  "Tags (space separated, e.g. tag:server)": "標籤（以空格分隔，例如 tag:server）",
+  "Rename failed": "重新命名失敗",
+  "Set tags failed": "設定標籤失敗",
+  "Delete node": "刪除節點",
+  "Delete failed": "刪除失敗",
+
+  // Users
+  "New user name": "新使用者名稱",
+  Create: "建立",
+  "Display name": "顯示名稱",
+  Email: "電子郵件",
+  "No users": "尚無使用者",
+  "Create failed": "建立失敗",
+  "Delete user": "刪除使用者",
+
+  // Console accounts (login accounts with passwords)
+  "Console accounts": "控制台帳號",
+  "Login accounts for this web console (with passwords). Not the same as Headscale users.":
+    "登入此網頁控制台的帳號（含密碼）。與 Headscale 使用者（VPN 命名空間）並非同一回事。",
+  "Account name": "帳號名稱",
+  Password: "密碼",
+  Role: "角色",
+  "Bind to Headscale user": "綁定 Headscale 使用者",
+  "(admin sees all)": "（管理員可檢視全部）",
+  "Bound Headscale user": "已綁定使用者",
+  "Reset password": "重設密碼",
+  "Password reset": "密碼已重設",
+  "Password must be at least 6 characters": "密碼至少需 6 個字元",
+  "at least 6 characters": "至少 6 個字元",
+  "Pick a Headscale user to bind": "請選擇要綁定的 Headscale 使用者",
+  Created: "已建立",
+  "Delete account": "刪除帳號",
+  "No accounts": "尚無帳號",
+  "Tip: a role=user account can only see and manage devices of its bound Headscale user.":
+    "提示：一般使用者帳號僅能檢視與管理其所綁定 Headscale 使用者下的裝置。",
+
+  // Pre-auth keys
+  "New key created": "已建立新金鑰",
+  "Copy it now — it will not be shown again.": "請立即複製——金鑰僅顯示一次。",
+  "User name": "使用者名稱",
+  "ACL tags (e.g. tag:server)": "ACL 標籤（例如 tag:server）",
+  Reusable: "可重複使用",
+  Ephemeral: "臨時",
+  "Create key": "建立金鑰",
+  ID: "識別碼",
+  Expiration: "到期時間",
+  yes: "是",
+  no: "否",
+  "No keys": "尚無金鑰",
+  "User is required": "請填寫使用者名稱",
+  "Expire failed": "過期操作失敗",
+
+  // Policy
+  Groups: "群組",
+  Hosts: "主機",
+  "Tag owners": "標籤擁有者",
+  "ACL rules": "ACL 規則",
+  Action: "動作",
+  Source: "來源",
+  Destination: "目的地",
+  accept: "允許",
+  deny: "拒絕",
+  Load: "載入",
+  Validate: "驗證",
+  Save: "儲存",
+  "No policy is stored yet. Saving will create one.":
+    "尚未儲存原則，儲存將建立一條。",
+  "Quick add rule": "快速新增規則",
+  Add: "新增",
+  "Isolated mode": "成員隔離",
+  "Mesh mode": "成員互訪",
+  "— none —": "— 無 —",
+
+  // Invite device
+  "Invite device": "邀請裝置",
+  "Invite a colleague to join": "邀請同事加入本網路",
+  "Generate an invite command with a built-in token.":
+    "產生一條內含令牌的邀請命令，同事執行後即自動加入（無需登入後台）。",
+  "Generate invite command": "產生邀請命令",
+  "Key (shown once)": "金鑰（僅顯示一次）",
+  "Linux / macOS": "Linux / macOS",
+  "Windows": "Windows",
+  "Copy install script": "複製命令",
+  "Download script": "下載腳本",
+  "Token valid for": "令牌有效期",
+  "hours": "小時",
+  "Revoke anytime from": "可隨時於",
+  "Revoke device": "撤銷裝置",
+  "Revoke node": "撤銷節點",
+  "Target user is required": "請選擇目標使用者",
+
+  // Invite ledger
+  "Applicant": "申請人",
+  "Device description": "裝置描述",
+  "Organization": "單位",
+  "Used as node hostname; ASCII only, e.g. zhangsan-laptop":
+    "作為節點名稱（僅限 ASCII，例如 zhangsan-laptop）",
+  "Invitation ledger": "邀請台帳",
+  "Invite record": "邀請記錄",
+  "Show expired": "顯示已過期",
+  "Hide expired": "隱藏已過期",
+  "Clear expired": "清除已過期",
+  "Clear expired invites": "確定清除所有已過期的邀請記錄",
+  "Clear failed": "清除失敗",
+  "Invited, not yet joined — the device will appear above once it joins.":
+    "已發出邀請、尚未加入——裝置上線後會自動出現於上方節點清單。",
+  "Add device": "新增裝置",
+  "Pending join": "待加入",
+  "Invite sent": "邀請已送出",
+  Close: "關閉",
+  "No invitations yet.": "尚無邀請記錄。",
+  "Device": "裝置",
+  "Node name": "節點名稱",
+  "By": "產生人",
+  "Expires": "到期時間",
+  "未使用": "未使用",
+  "已使用": "已使用",
+  "已过期": "已過期",
+  "已吊销": "已撤銷",
+
+  // Change password
+  "Change password": "修改密碼",
+  "Old password": "原密碼",
+  "New password": "新密碼",
+  "Confirm password": "確認新密碼",
+  "Password changed": "密碼已修改",
+  "Change password failed": "修改密碼失敗",
+
+  // Activity log (audit)
+  "Activity log": "活動紀錄",
+  Notifications: "站內通知",
+  "Mark all read": "全部已讀",
+  "No notifications": "尚無通知",
+  "Machine id used in ACLs and join commands": "機器識別碼：用於 ACL 與入網命令中的使用者名稱（英文小寫）",
+  "e.g. real name / nickname": "例如：姓名 / 暱稱",
+  "Time": "時間",
+  "Actor": "操作者",
+  "Event": "事件",
+  "Target": "對象",
+  "Detail": "詳情",
+  "IP": "來源 IP",
+  "No activity yet.": "尚無活動記錄。",
+
+  // Mobile onboarding
+  "Mobile access": "行動裝置接入",
+  "Download profile (iOS)": "下載描述檔（iOS）",
+  "iOS install steps": "iOS 安裝步驟",
+  "Android access": "Android 接入",
+  "Android note":
+    "Android 需透過 MDM（Android Enterprise）推送 ServerURL + AuthKey 受管理設定，或先將裝置設為完全受管理裝置後再安裝 Tailscale。",
+  "Managed config (Android)": "Android 受管理設定（JSON）",
+  "Copy config": "複製設定",
+  "Install profile hint":
+    "請將描述檔透過 AirDrop / 郵件 / 網盤傳送至 iPhone 或 iPad，開啟「設定 → 已下載的描述檔」安裝，再開啟 Tailscale 即可自動連線。",
+  "Server": "伺服器",
+  "Auth key embedded": "金鑰已內嵌於描述檔（僅顯示一次，請妥善保存）",
+
+  // Mail / SMTP settings
+  "Mail settings": "郵件設定",
+  "Enable email alerts": "啟用郵件警示",
+  "SMTP configuration": "SMTP 設定",
+  "SMTP host": "SMTP 主機",
+  "SMTP port": "SMTP 連接埠",
+  "SMTP username": "SMTP 使用者名稱",
+  "SMTP password": "SMTP 密碼",
+  "Leave blank to keep unchanged": "留白表示不修改",
+  "From address": "寄件者地址",
+  "Encryption": "加密方式",
+  "STARTTLS (587)": "STARTTLS（587）",
+  "Implicit TLS (465)": "隱含式 TLS（465）",
+  "Resend API key": "Resend API 金鑰",
+  "Resend from": "Resend 寄件地址",
+  "Alert recipients": "警示收件人",
+  "comma-separated emails": "多個郵件以逗號分隔",
+  "Test recipient": "測試收件郵件",
+  "Send test email": "傳送測試郵件",
+  "Test email sent": "測試郵件已傳送",
+  "Test recipient required": "請填寫測試收件郵件",
+  "Mail not configured": "尚未設定郵件",
+};
+
 const STORAGE_KEY = "hs_lang";
 
 function initialLang(): Lang {
-  if (typeof localStorage === "undefined") return "zh";
+  if (typeof localStorage === "undefined") return "zh-Hans";
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "en" ? "en" : "zh";
+  return v === "zh-Hant" || v === "en" ? v : "zh-Hans";
+}
+
+// Reflect the active language on <html lang> so browsers don't try to
+// auto-translate our already-localized text.
+function applyHtmlLang(l: Lang) {
+  if (typeof document !== "undefined") document.documentElement.lang = l;
 }
 
 interface LangCtxValue {
@@ -250,13 +485,14 @@ interface LangCtxValue {
 }
 
 const LangCtx = createContext<LangCtxValue>({
-  lang: "zh",
+  lang: "zh-Hans",
   setLang: () => {},
   t: (s) => s,
 });
 
 export function LangProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(initialLang());
+  applyHtmlLang(lang);
 
   const setLang = (l: Lang) => {
     try {
@@ -264,10 +500,12 @@ export function LangProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    applyHtmlLang(l);
     setLangState(l);
   };
 
-  const t = (s: string) => (lang === "en" ? s : zh[s] ?? s);
+  const t = (s: string) =>
+    lang === "en" ? s : (zhHant[s] ?? zhHans[s] ?? s);
 
   return (
     <LangCtx.Provider value={{ lang, setLang, t }}>
