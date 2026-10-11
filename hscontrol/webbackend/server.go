@@ -148,6 +148,16 @@ type Config struct {
 	SMTPPassword string // for Resend this is the API key
 	SMTPFrom     string // envelope/from address (must be a verified domain)
 	SMTPTLS      string // "starttls" (default, port 587) | "ssl" (implicit TLS, port 465)
+
+	// Cloudflare Turnstile: human verification / anti-credential-stuffing.
+	// The secret is server-side only; the public site key is exposed to the
+	// login page via GET /ui/api/auth/config. Turnstile is enabled only when
+	// both SiteKey and Hostnames are set (the verifier ignores a missing
+	// secret, so the hostname allow-list is the hard on/off switch).
+	TurnstileSecret    string   // WEBUI_TURNSTILE_SECRET
+	TurnstileSiteKey   string   // WEBUI_TURNSTILE_SITE_KEY (public)
+	TurnstileHostnames []string // WEBUI_TURNSTILE_HOSTNAMES (comma-separated)
+	TurnstileAction    string   // WEBUI_TURNSTILE_ACTION (default "login")
 }
 
 func LoadConfig() *Config {
@@ -169,8 +179,29 @@ func LoadConfig() *Config {
 		SMTPPassword:    os.Getenv("SMTP_PASSWORD"),
 		SMTPFrom:        os.Getenv("SMTP_FROM"),
 		SMTPTLS:         getenv("SMTP_TLS", "starttls"),
+
+		TurnstileSecret:    os.Getenv("WEBUI_TURNSTILE_SECRET"),
+		TurnstileSiteKey:   os.Getenv("WEBUI_TURNSTILE_SITE_KEY"),
+		TurnstileHostnames: splitList(os.Getenv("WEBUI_TURNSTILE_HOSTNAMES")),
+		TurnstileAction:    getenv("WEBUI_TURNSTILE_ACTION", DefaultTurnstileAction),
 	}
 	return c
+}
+
+// splitList splits a comma-separated env value into a trimmed, non-empty slice.
+// "a, b ,,c" -> ["a", "b", "c"]; "" -> nil.
+func splitList(v string) []string {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func getenv(k, def string) string {
@@ -191,6 +222,19 @@ type Server struct {
 	guardMu      sync.Mutex
 	guardFails   map[string]int
 	guardLocked  map[string]time.Time
+
+	// loginIPMu + loginIPTimes is a global, per-source-IP rate limit on the
+	// login endpoint. It complements loginGuard (which is per IP|username):
+	// even before any credential check, a single IP can't hammer /login faster
+	// than loginIPMax attempts per loginIPWindow. Also in-memory.
+	loginIPMu    sync.Mutex
+	loginIPTimes map[string][]time.Time
+
+	// turnstile is the Cloudflare Turnstile verifier; nil when disabled.
+	turnstile         TurnstileVerifier
+	turnstileSiteKey  string
+	turnstileAction   string
+	turnstileEnabled  bool
 
 	// watcher state for node join / offline detection (reliability alerts).
 	watchMu      sync.Mutex
@@ -239,12 +283,28 @@ func NewServer(cfg *Config) (*Server, error) {
 		client:       &http.Client{Timeout: 30 * time.Second},
 		guardFails:   map[string]int{},
 		guardLocked:  map[string]time.Time{},
+		loginIPTimes: map[string][]time.Time{},
 		knownNodes:   map[string]bool{},
 		knownOnline:  map[string]bool{},
 		notifiedKeys: map[string]bool{},
 		mail:         &MailSettings{},
 		sseClients:   map[chan struct{}]bool{},
 		sseEvClients: map[chan []byte]bool{},
+	}
+
+	// Build the Turnstile verifier. NewTurnstileVerifier returns nil (disabled)
+	// unless both the secret and an allowed hostname list are configured.
+	s.turnstile = NewTurnstileVerifier(cfg.TurnstileSecret, cfg.TurnstileAction, cfg.TurnstileHostnames, s.client)
+	s.turnstileSiteKey = cfg.TurnstileSiteKey
+	s.turnstileAction = cfg.TurnstileAction
+	s.turnstileEnabled = s.turnstile != nil && cfg.TurnstileSiteKey != ""
+	if s.turnstileEnabled {
+		log.Printf("webbackend: Cloudflare Turnstile enabled for hostnames %v (action %q)", cfg.TurnstileHostnames, cfg.TurnstileAction)
+	} else if s.turnstile != nil {
+		// Secret + hostnames set but the public site key is missing: the login
+		// page can't render the widget, so we must NOT require verification
+		// (that would lock everyone out). Log it loudly instead.
+		log.Printf("webbackend: WARNING Turnstile secret is set but WEBUI_TURNSTILE_SITE_KEY is missing — human verification is DISABLED")
 	}
 
 	if err := s.bootstrap(); err != nil {
@@ -358,6 +418,9 @@ func (s *Server) Handler() http.Handler {
 	r.Post("/ui/api/auth/login", s.handleLogin)
 	r.Post("/ui/api/auth/logout", s.handleLogout)
 	r.Get("/ui/api/auth/me", s.withSession(s.handleMe))
+	// Public, unauthenticated: tells the login page whether to render the
+	// Turnstile widget and with which (public) site key + action.
+	r.Get("/ui/api/auth/config", s.handleAuthConfig)
 
 	r.Group(func(protected chi.Router) {
 		protected.Use(middlewareOf(s.withSession))
@@ -519,19 +582,43 @@ func middlewareOf(m func(http.HandlerFunc) http.HandlerFunc) func(http.Handler) 
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Username       string `json:"username"`
+		Password       string `json:"password"`
+		TurnstileToken string `json:"turnstile_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
-	key := clientIP(r) + "|" + body.Username
+
+	ip := clientIP(r)
+
+	// 1) Global per-IP rate limit on the login endpoint itself, applied before
+	//    any credential work so a single source can't hammer the endpoint.
+	if !s.loginIPRateLimit(ip) {
+		s.recordEvent(r, "login_blocked", body.Username, "ip rate limit")
+		writeError(w, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
+		return
+	}
+
+	key := ip + "|" + body.Username
 	if locked, until := s.guardCheck(key); locked {
 		s.recordEvent(r, "login_blocked", body.Username, "locked out")
 		writeError(w, http.StatusTooManyRequests, "尝试次数过多，请 "+strconv.Itoa(int(until.Minutes()))+" 分钟后再试")
 		return
 	}
+
+	// 2) Human verification (Cloudflare Turnstile). Fail-closed: when enabled
+	//    we MUST verify; a missing or invalid token rejects the login.
+	if s.turnstileEnabled {
+		if err := s.turnstile.Verify(r.Context(), body.TurnstileToken, ip); err != nil {
+			s.guardFail(key)
+			s.recordEvent(r, "login_fail", body.Username, "turnstile: "+err.Error())
+			writeError(w, http.StatusBadRequest, "人机验证未通过，请重试")
+			return
+		}
+	}
+
 	var u WebUser
 	if err := s.db.Where("username = ?", body.Username).First(&u).Error; err != nil {
 		s.guardFail(key)
@@ -550,8 +637,19 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "session error")
 		return
 	}
-	s.recordEventAs(u.Username, clientIP(r), "login", body.Username, "")
+	s.recordEventAs(u.Username, ip, "login", body.Username, "")
 	writeJSON(w, http.StatusOK, map[string]any{"username": u.Username, "role": u.Role, "headscale_user": u.HeadscaleUser})
+}
+
+// handleAuthConfig returns the public login-page configuration: whether
+// Turnstile is enabled and, if so, the (public) site key and action the widget
+// must render with. Unauthenticated — it's fetched by the login page.
+func (s *Server) handleAuthConfig(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"turnstile_enabled":  s.turnstileEnabled,
+		"turnstile_site_key": s.turnstileSiteKey,
+		"turnstile_action":   s.turnstileAction,
+	})
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -1309,6 +1407,12 @@ func (s *Server) notifyAdmins(subject, htmlBody string) {
 const (
 	loginMaxFails    = 5
 	loginLockMinutes = 15
+
+	// Global per-IP login rate limit: at most loginIPMax POSTs to /login from
+	// a single source IP within loginIPWindow. Generous for humans (one per
+	// second) but chokes high-rate credential stuffing / password spraying.
+	loginIPMax    = 60
+	loginIPWindow = time.Minute
 )
 
 // guardCheck reports whether the key is currently locked out and for how long.
@@ -1338,6 +1442,32 @@ func (s *Server) guardSuccess(key string) {
 	defer s.guardMu.Unlock()
 	delete(s.guardFails, key)
 	delete(s.guardLocked, key)
+}
+
+// loginIPRateLimit enforces a global sliding-window rate limit per source IP on
+// the login endpoint. It returns false when the IP has exceeded loginIPMax
+// attempts within loginIPWindow; the caller should reject the request. Old
+// timestamps are pruned on each call so the map stays bounded.
+func (s *Server) loginIPRateLimit(ip string) bool {
+	s.loginIPMu.Lock()
+	defer s.loginIPMu.Unlock()
+
+	now := time.Now()
+	times := s.loginIPTimes[ip]
+	kept := times[:0]
+	for _, t := range times {
+		if now.Sub(t) < loginIPWindow {
+			kept = append(kept, t)
+		}
+	}
+	if len(kept) >= loginIPMax {
+		// Re-store the pruned window (drop the oldest entries) but do not add
+		// this attempt; the caller rejects.
+		s.loginIPTimes[ip] = kept
+		return false
+	}
+	s.loginIPTimes[ip] = append(kept, now)
+	return true
 }
 
 // ---- audit log endpoints --------------------------------------------------

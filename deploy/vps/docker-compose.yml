@@ -40,6 +40,13 @@ services:
       WEBUI_COOKIE_SECURE: "true"        # behind HTTPS -> secure cookie
       WEBUI_BOOTSTRAP_ADMIN: "${WEBUI_BOOTSTRAP_ADMIN}"   # "user:pass" first run
       HEADSCALE_PUBLIC_URL: "https://hs.sclink.dev"
+      # Cloudflare Turnstile human verification (anti-credential-stuffing).
+      # Enable by setting WEBUI_TURNSTILE_SECRET + WEBUI_TURNSTILE_SITE_KEY +
+      # WEBUI_TURNSTILE_HOSTNAMES (comma-separated, must include hs.sclink.dev).
+      WEBUI_TURNSTILE_SECRET: "${WEBUI_TURNSTILE_SECRET}"
+      WEBUI_TURNSTILE_SITE_KEY: "${WEBUI_TURNSTILE_SITE_KEY}"
+      WEBUI_TURNSTILE_HOSTNAMES: "${WEBUI_TURNSTILE_HOSTNAMES}"
+      WEBUI_TURNSTILE_ACTION: "${WEBUI_TURNSTILE_ACTION}"
     volumes:
       - webui_data:/var/lib/webui
     networks:

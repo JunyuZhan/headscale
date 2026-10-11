@@ -163,11 +163,24 @@ export async function authFetch<T>(path: string, init?: RequestInit): Promise<T>
   return (text ? (JSON.parse(text) as T) : undefined) as T;
 }
 
+export interface AuthConfig {
+  turnstile_enabled: boolean;
+  turnstile_site_key: string;
+  turnstile_action: string;
+}
+
 export const auth = {
-  login: (username: string, password: string) =>
+  // Public, unauthenticated: tells the login page whether to render the
+  // Turnstile widget and with which site key / action.
+  config: () => authFetch<AuthConfig>("/config"),
+  login: (username: string, password: string, turnstileToken?: string) =>
     authFetch<Me>("/login", {
       method: "POST",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify(
+        turnstileToken
+          ? { username, password, turnstile_token: turnstileToken }
+          : { username, password },
+      ),
     }),
   logout: () => authFetch<{ ok: boolean }>("/logout", { method: "POST" }),
   me: () => authFetch<Me>("/me"),

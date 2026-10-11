@@ -40,6 +40,15 @@ const zhHans: Record<string, string> = {
   "Signing in…": "登录中…",
   "Sign in": "登录",
 
+  // Login / security (Cloudflare Turnstile human verification)
+  "Sign in to your network console": "登录你的网络控制台",
+  "Secure, self-hosted Tailscale control plane": "自建、安全的 Tailscale 控制平面",
+  "Security verification": "安全验证",
+  "Complete the security check to continue": "完成安全验证以继续",
+  "Human verification failed, please try again": "人机验证未通过，请重试",
+  "Verifying you are human…": "正在验证你是真人…",
+  "Protected by Cloudflare Turnstile": "由 Cloudflare Turnstile 提供人机验证保护",
+
   // Nodes
   Name: "名称",
   User: "用户",
@@ -266,6 +275,15 @@ const zhHant: Record<string, string> = {
   Refresh: "重新整理",
   "Signing in…": "登入中…",
   "Sign in": "登入",
+
+  // Login / security (Cloudflare Turnstile human verification)
+  "Sign in to your network console": "登入你的網路控制台",
+  "Secure, self-hosted Tailscale control plane": "自建、安全的 Tailscale 控制平面",
+  "Security verification": "安全驗證",
+  "Complete the security check to continue": "完成安全驗證以繼續",
+  "Human verification failed, please try again": "人機驗證未通過，請重試",
+  "Verifying you are human…": "正在驗證你是真人…",
+  "Protected by Cloudflare Turnstile": "由 Cloudflare Turnstile 提供人機驗證保護",
 
   // Nodes
   Name: "名稱",
