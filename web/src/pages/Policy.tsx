@@ -185,49 +185,49 @@ export default function Policy() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold text-white">{t("ACL Policy")}</h1>
+        <h1 className="text-[28px] leading-[1.3] tracking-heading font-semibold text-ink">{t("ACL Policy")}</h1>
         <div className="space-x-2">
           <button
             onClick={load}
             disabled={busy}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+            className="bg-fog text-ink hover:bg-mist px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Load")}
           </button>
           <button
             onClick={check}
             disabled={busy}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+            className="bg-fog text-ink hover:bg-mist px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Validate")}
           </button>
           <button
             onClick={save}
             disabled={busy}
-            className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+            className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Save")}
           </button>
           <button
             onClick={() => applyPreset(PRESET_ISOLATED, t("Isolated mode"))}
             disabled={busy}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+            className="bg-fog text-ink hover:bg-mist px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Isolated mode")}
           </button>
           <button
             onClick={() => applyPreset(PRESET_MESH, t("Mesh mode"))}
             disabled={busy}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+            className="bg-fog text-ink hover:bg-mist px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Mesh mode")}
           </button>
         </div>
       </div>
-      {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
-      {msg && <div className="text-emerald-400 mb-3 text-sm">{msg}</div>}
+      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
+      {msg && <div className="text-live mb-3 text-sm">{msg}</div>}
       {exists === false && (
-        <div className="text-amber-400 mb-3 text-sm">
+        <div className="text-[#9a6700] mb-3 text-sm">
           {t("No policy is stored yet. Saving will create one.")}
         </div>
       )}
@@ -240,8 +240,8 @@ export default function Policy() {
           ) : (
             Object.entries(groups).map(([g, m]) => (
               <div key={g} className="text-sm">
-                <span className="text-brand-500">{g}</span>
-                <span className="text-slate-400"> → {m.join(", ")}</span>
+                <span className="text-ember">{g}</span>
+                <span className="text-graphite"> → {m.join(", ")}</span>
               </div>
             ))
           )}
@@ -252,8 +252,8 @@ export default function Policy() {
           ) : (
             Object.entries(hosts).map(([h, c]) => (
               <div key={h} className="text-sm">
-                <span className="text-brand-500">{h}</span>
-                <span className="text-slate-400"> → {c}</span>
+                <span className="text-ember">{h}</span>
+                <span className="text-graphite"> → {c}</span>
               </div>
             ))
           )}
@@ -264,8 +264,8 @@ export default function Policy() {
           ) : (
             Object.entries(tagOwners).map(([tag, o]) => (
               <div key={tag} className="text-sm">
-                <span className="text-brand-500">{tag}</span>
-                <span className="text-slate-400"> → {o.join(", ")}</span>
+                <span className="text-ember">{tag}</span>
+                <span className="text-graphite"> → {o.join(", ")}</span>
               </div>
             ))
           )}
@@ -277,22 +277,22 @@ export default function Policy() {
           <Empty />
         ) : (
           <table className="w-full text-sm">
-            <thead className="text-slate-400">
+            <thead className="text-graphite">
               <tr className="text-left">
                 <th className="py-1 pr-3">{t("Action")}</th>
                 <th className="py-1 pr-3">{t("Source")}</th>
                 <th className="py-1">{t("Destination")}</th>
               </tr>
             </thead>
-            <tbody className="text-slate-300">
+            <tbody className="text-graphite">
               {acls.map((r, i) => (
-                <tr key={i} className="border-t border-slate-800 align-top">
+                <tr key={i} className="border-t border-mist align-top">
                   <td className="py-1 pr-3">
                     <span
                       className={
                         r.action === "deny"
-                          ? "text-red-400"
-                          : "text-emerald-400"
+                          ? "text-[#a32d2d]"
+                          : "text-live"
                       }
                     >
                       {t(r.action ?? "accept")}
@@ -307,13 +307,13 @@ export default function Policy() {
         )}
       </VizCard>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mt-4 space-y-3">
-        <h3 className="text-sm font-medium text-slate-200">{t("Quick add rule")}</h3>
+      <div className="bg-paper border border-mist rounded-xl p-4 mt-4 space-y-3">
+        <h3 className="text-sm font-medium text-ink">{t("Quick add rule")}</h3>
         <div className="flex flex-wrap gap-2 items-center text-sm">
           <select
             value={action}
             onChange={(e) => setAction(e.target.value)}
-            className="focus-ring bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200"
+            className="focus-ring bg-paper border border-mist rounded-xl p-1.5 text-ink"
           >
             <option value="accept">{t("accept")}</option>
             <option value="deny">{t("deny")}</option>
@@ -322,32 +322,32 @@ export default function Policy() {
             placeholder="src: group:admins,*"
             value={src}
             onChange={(e) => setSrc(e.target.value)}
-            className="focus-ring bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 flex-1 min-w-[12rem]"
+            className="focus-ring bg-paper border border-mist rounded-xl p-1.5 text-ink flex-1 min-w-[12rem]"
           />
-          <span className="text-slate-400">→</span>
+          <span className="text-graphite">→</span>
           <input
             placeholder="dst: tag:server:80"
             value={dst}
             onChange={(e) => setDst(e.target.value)}
-            className="focus-ring bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-slate-200 flex-1 min-w-[12rem]"
+            className="focus-ring bg-paper border border-mist rounded-xl p-1.5 text-ink flex-1 min-w-[12rem]"
           />
           <button
             onClick={addRule}
-            className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded text-sm"
+            className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded text-sm"
           >
             {t("Add")}
           </button>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-steel">
           添加规则会以规范 JSON 覆盖当前文本（注释会丢失）。添加后请审阅并点击「{t("Save")}」。
         </p>
       </div>
 
-      <p className="text-slate-400 text-xs mb-2 mt-4">
+      <p className="text-graphite text-xs mb-2 mt-4">
         编辑需要数据库模式（policy.mode: database）；在文件模式下策略存于磁盘。HuJSON 支持注释与尾随逗号。
       </p>
       <textarea
-        className="w-full h-[40vh] bg-slate-900 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200"
+        className="w-full h-[40vh] bg-paper border border-mist rounded-xl p-3 text-sm font-mono text-ink"
         spellCheck={false}
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -358,13 +358,13 @@ export default function Policy() {
 
 function VizCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-      <h3 className="text-sm font-medium text-slate-200 mb-2">{title}</h3>
+    <div className="bg-paper border border-mist rounded-xl p-4">
+      <h3 className="text-sm font-medium text-ink mb-2">{title}</h3>
       <div className="space-y-1">{children}</div>
     </div>
   );
 }
 
 function Empty() {
-  return <div className="text-sm text-slate-500">{`— 无 —`}</div>;
+  return <div className="text-sm text-steel">{`— 无 —`}</div>;
 }

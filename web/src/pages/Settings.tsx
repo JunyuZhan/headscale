@@ -13,8 +13,8 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-sm text-slate-300">{label}</span>
-      {hint && <span className="ml-2 text-xs text-slate-500">{hint}</span>}
+      <span className="text-sm text-graphite">{label}</span>
+      {hint && <span className="ml-2 text-xs text-steel">{hint}</span>}
       <div className="mt-1">{children}</div>
     </label>
   );
@@ -85,38 +85,38 @@ export default function Settings() {
   };
 
   const inputCls =
-    "focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200";
+    "focus-ring w-full bg-paper border border-mist rounded-xl p-2 text-sm text-ink";
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-semibold text-white mb-1">
+      <h1 className="text-[28px] leading-[1.3] tracking-heading font-semibold text-ink mb-1">
         {t("Mail settings")}
       </h1>
-      <p className="text-slate-400 text-sm mb-6">
+      <p className="text-graphite text-sm mb-6">
         {t("Enable email alerts")} · SMTP / Resend
       </p>
 
-      {err && <div className="text-red-400 mb-4 text-sm">{err}</div>}
-      {msg && <div className="text-emerald-400 mb-4 text-sm">{msg}</div>}
+      {err && <div className="text-[#a32d2d] mb-4 text-sm">{err}</div>}
+      {msg && <div className="text-live mb-4 text-sm">{msg}</div>}
 
       <form onSubmit={save} className="space-y-6">
         <div className="card p-5">
           <label className="flex items-center justify-between">
-            <span className="text-sm text-slate-200">{t("Enable email alerts")}</span>
+            <span className="text-sm text-ink">{t("Enable email alerts")}</span>
             <input
               type="checkbox"
               checked={m.enabled}
               onChange={(e) => set("enabled", e.target.checked)}
-              className="w-5 h-5 accent-brand-500"
+              className="w-5 h-5 accent-ember"
             />
           </label>
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-steel mt-2">
             关闭后将不再发送告警邮件（节点入网 / 掉线 / 密钥过期），但相关事件仍会记入活动日志。
           </p>
         </div>
 
         <div className="card p-5 space-y-4">
-          <h2 className="text-base font-medium text-white">
+          <h2 className="text-base font-medium text-ink">
             {t("SMTP configuration")}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -173,17 +173,17 @@ export default function Settings() {
               />
             </Field>
           </div>
-          <p className="text-xs text-slate-500">
-            Resend SMTP：用户名固定为 <code className="text-slate-300">resend</code>，
+          <p className="text-xs text-steel">
+            Resend SMTP：用户名固定为 <code className="text-graphite">resend</code>，
             密码即你的 Resend API Key；发件域名需在 Resend 中已验证。
           </p>
         </div>
 
         <div className="card p-5 space-y-4">
-          <h2 className="text-base font-medium text-white">
+          <h2 className="text-base font-medium text-ink">
             {t("Resend API key")}（备用）
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-steel">
             若不使用 SMTP，可填 Resend REST API 密钥作为回退；两者都留空则不发信。
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -209,7 +209,7 @@ export default function Settings() {
         </div>
 
         <div className="card p-5 space-y-4">
-          <h2 className="text-base font-medium text-white">
+          <h2 className="text-base font-medium text-ink">
             {t("Alert recipients")}
           </h2>
           <Field label={t("Alert recipients")} hint={t("comma-separated emails")}>
@@ -220,13 +220,13 @@ export default function Settings() {
               onChange={(e) => set("resend_notify_to", e.target.value)}
             />
           </Field>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-steel">
             留空时，系统会向「用户」页面中标记为管理员的邮箱发送告警。
           </p>
         </div>
 
         <div className="card p-5 space-y-3">
-          <h2 className="text-base font-medium text-white">发送测试邮件</h2>
+          <h2 className="text-base font-medium text-ink">发送测试邮件</h2>
           <div className="flex flex-col sm:flex-row gap-3">
             <input
               className={inputCls}
@@ -238,20 +238,20 @@ export default function Settings() {
               type="button"
               onClick={test}
               disabled={busy}
-              className="shrink-0 bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+              className="shrink-0 bg-fog text-ink hover:bg-mist py-2 px-4 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
             >
               {busy ? t("Loading…") : t("Send test email")}
             </button>
           </div>
           {testMsg && (
-            <div className="text-sm text-slate-300">{testMsg}</div>
+            <div className="text-sm text-graphite">{testMsg}</div>
           )}
         </div>
 
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+          className="w-full bg-ember hover:bg-ember-600 text-paper py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
         >
           {busy ? t("Loading…") : t("Save")}
         </button>

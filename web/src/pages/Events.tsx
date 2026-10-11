@@ -5,14 +5,14 @@ import { useI18n } from "../i18n";
 // Maps an event type to a Tailwind badge color.
 function badgeClass(type: string): string {
   if (type.startsWith("login_fail") || type === "login_blocked")
-    return "bg-red-500/15 text-red-300";
+    return "bg-[#fbeaea] text-[#a32d2d]";
   if (type === "node_offline" || type === "key_expiring")
-    return "bg-amber-500/15 text-amber-300";
+    return "bg-[#fbf3e6] text-[#9a6700]";
   if (type === "delete_user" || type === "node_delete" || type === "reset_password")
     return "bg-orange-500/15 text-orange-300";
   if (type === "login" || type === "node_join" || type === "create_key" || type === "create_user")
-    return "bg-emerald-500/15 text-emerald-300";
-  return "bg-slate-500/15 text-slate-300";
+    return "bg-live-soft text-live";
+  return "bg-fog text-graphite";
 }
 
 export default function Events() {
@@ -35,26 +35,26 @@ export default function Events() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-white">{t("Activity log")}</h1>
+        <h1 className="text-xl font-semibold text-ink">{t("Activity log")}</h1>
         <button
           onClick={load}
-          className="text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+          className="text-xs text-graphite border border-mist rounded-xl px-2.5 py-1.5 hover:bg-paper hover:text-ink transition-colors"
         >
           {t("Refresh")}
         </button>
       </div>
 
-      {error && <div className="text-red-400 text-sm">{error}</div>}
+      {error && <div className="text-[#a32d2d] text-sm">{error}</div>}
 
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-6 text-slate-400">{t("Loading…")}</div>
+          <div className="p-6 text-graphite">{t("Loading…")}</div>
         ) : events.length === 0 ? (
-          <div className="p-6 text-slate-400">{t("No activity yet.")}</div>
+          <div className="p-6 text-graphite">{t("No activity yet.")}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-slate-400 border-b border-slate-800">
+              <tr className="text-left text-graphite border-b border-mist">
                 <th className="p-3 font-medium">{t("Time")}</th>
                 <th className="p-3 font-medium">{t("Actor")}</th>
                 <th className="p-3 font-medium">{t("Event")}</th>
@@ -65,8 +65,8 @@ export default function Events() {
             </thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.id} className="border-b border-slate-800/60 text-slate-300">
-                  <td className="p-3 whitespace-nowrap text-slate-400">
+                <tr key={e.id} className="border-b border-mist/60 text-graphite">
+                  <td className="p-3 whitespace-nowrap text-graphite">
                     {new Date(e.time).toLocaleString()}
                   </td>
                   <td className="p-3 whitespace-nowrap">{e.actor}</td>
@@ -80,8 +80,8 @@ export default function Events() {
                     </span>
                   </td>
                   <td className="p-3 whitespace-nowrap">{e.target || "—"}</td>
-                  <td className="p-3 text-slate-400">{e.detail || "—"}</td>
-                  <td className="p-3 whitespace-nowrap text-slate-500">{e.ip}</td>
+                  <td className="p-3 text-graphite">{e.detail || "—"}</td>
+                  <td className="p-3 whitespace-nowrap text-steel">{e.ip}</td>
                 </tr>
               ))}
             </tbody>

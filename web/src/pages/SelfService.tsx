@@ -96,28 +96,28 @@ export default function SelfService() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-white">{t("My devices")}</h2>
-        <p className="text-sm text-slate-400">
-          账号 <span className="text-brand-500">{me.username}</span>
+        <h2 className="text-lg font-semibold text-ink">{t("My devices")}</h2>
+        <p className="text-sm text-graphite">
+          账号 <span className="text-ember">{me.username}</span>
           {me.headscale_user
             ? ` 映射到 Headscale 用户 ${me.headscale_user}`
             : ""}
         </p>
       </div>
 
-      {error && <div className="text-red-400 text-sm">{error}</div>}
+      {error && <div className="text-[#a32d2d] text-sm">{error}</div>}
 
       {!isAdmin && (
         <div className="card p-4">
-          <h3 className="text-sm font-medium text-slate-200 mb-3">
+          <h3 className="text-sm font-medium text-ink mb-3">
             {t("Joined devices")}
           </h3>
           {nodes.length === 0 ? (
-            <p className="text-sm text-slate-500">{t("No devices yet.")}</p>
+            <p className="text-sm text-steel">{t("No devices yet.")}</p>
           ) : (
             <div className="overflow-auto">
               <table className="w-full text-sm">
-                <thead className="text-slate-400">
+                <thead className="text-graphite">
                   <tr className="text-left">
                     <th className="py-1 pr-3">{t("Name")}</th>
                     <th className="py-1 pr-3">{t("Address")}</th>
@@ -125,18 +125,18 @@ export default function SelfService() {
                     <th className="py-1">{t("Last seen")}</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-300">
+                <tbody className="text-graphite">
                   {nodes.map((n, i) => (
-                    <tr key={n.id ?? i} className="border-t border-slate-800">
+                    <tr key={n.id ?? i} className="border-t border-mist">
                       <td className="py-1 pr-3">{n.givenName ?? n.name ?? "—"}</td>
                       <td className="py-1 pr-3 font-mono">
                         {((n.ipAddresses ?? n.addresses) ?? []).join(", ")}
                       </td>
                       <td className="py-1 pr-3">
                         {n.online ?? n.connected ? (
-                          <span className="text-emerald-400">{t("online")}</span>
+                          <span className="text-live">{t("online")}</span>
                         ) : (
-                          <span className="text-slate-500">{t("offline")}</span>
+                          <span className="text-steel">{t("offline")}</span>
                         )}
                       </td>
                       <td className="py-1">{n.lastSeen ?? "—"}</td>
@@ -150,24 +150,24 @@ export default function SelfService() {
       )}
 
       <div className="card p-4 space-y-3 max-w-lg">
-        <h3 className="text-sm font-medium text-slate-200">
+        <h3 className="text-sm font-medium text-ink">
           {t("Generate join key (self-service)")}
         </h3>
 
         {isAdmin &&
           (users.length === 0 ? (
-            <p className="text-sm text-amber-400">
+            <p className="text-sm text-[#9a6700]">
               {t("Create a Headscale user first")}
             </p>
           ) : (
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
+              <label className="block text-xs text-graphite mb-1">
                 {t("Target user")}
               </label>
               <select
                 value={targetUser}
                 onChange={(e) => setTargetUser(e.target.value)}
-                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-slate-200"
+                className="focus-ring w-full bg-paper border border-mist rounded-xl p-2 text-ink"
               >
                 {users.map((u) => (
                   <option key={u.id} value={u.name}>
@@ -193,25 +193,25 @@ export default function SelfService() {
       {result && (
         <div className="card p-4 space-y-4">
           <div>
-            <h3 className="text-base font-medium text-white mb-1">
+            <h3 className="text-base font-medium text-ink mb-1">
               {t("Join command (key shown once)")}
             </h3>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-steel mb-3">
               {t("Token valid for")} {result.expiration_hours} {t("hours")} ·
-              {t("Revoke anytime from")} <span className="text-brand-500">{t("Nodes")}</span>
+              {t("Revoke anytime from")} <span className="text-ember">{t("Nodes")}</span>
             </p>
           </div>
 
           {/* macOS / Linux */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-slate-200">
+              <span className="text-sm font-medium text-ink">
                 {t("Linux / macOS")}
               </span>
               <div className="space-x-2">
                 <button
                   onClick={() => copy(result.commands.linux_macos ?? "")}
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                  className="text-xs bg-fog hover:bg-mist text-ink border border-mist px-2 py-1 rounded"
                 >
                   {t("Copy install script")}
                 </button>
@@ -219,13 +219,13 @@ export default function SelfService() {
                   onClick={() =>
                     download("join.sh", result.commands.linux_macos ?? "")
                   }
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                  className="text-xs bg-fog hover:bg-mist text-ink border border-mist px-2 py-1 rounded"
                 >
                   {t("Download script")}
                 </button>
               </div>
             </div>
-            <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
+            <pre className="bg-fog border border-mist rounded-xl p-3 text-xs text-live overflow-auto">
 {result.commands.linux_macos}
             </pre>
           </div>
@@ -233,13 +233,13 @@ export default function SelfService() {
           {/* Windows */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-slate-200">
+              <span className="text-sm font-medium text-ink">
                 {t("Windows")}
               </span>
               <div className="space-x-2">
                 <button
                   onClick={() => copy(result.commands.windows ?? "")}
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                  className="text-xs bg-fog hover:bg-mist text-ink border border-mist px-2 py-1 rounded"
                 >
                   {t("Copy install script")}
                 </button>
@@ -247,21 +247,21 @@ export default function SelfService() {
                   onClick={() =>
                     download("join.ps1", result.commands.windows ?? "")
                   }
-                  className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded"
+                  className="text-xs bg-fog hover:bg-mist text-ink border border-mist px-2 py-1 rounded"
                 >
                   {t("Download script")}
                 </button>
               </div>
             </div>
-            <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
+            <pre className="bg-fog border border-mist rounded-xl p-3 text-xs text-live overflow-auto">
 {result.commands.windows}
             </pre>
           </div>
 
           {/* Mobile */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
-              <div className="text-sm font-medium text-slate-200">
+            <div className="rounded-xl border border-mist bg-fog p-4 space-y-2">
+              <div className="text-sm font-medium text-ink">
                 {t("Mobile access")} · iOS
               </div>
               <button
@@ -271,29 +271,29 @@ export default function SelfService() {
                     buildMobileConfig(result.server_url, result.key),
                   )
                 }
-                className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-ember hover:bg-ember-600 text-paper px-3 py-2 rounded-xl text-sm font-medium transition-colors"
               >
                 {t("Download profile (iOS)")}
               </button>
-              <p className="text-xs text-slate-400">{t("Install profile hint")}</p>
-              <p className="text-xs text-slate-500">{t("Auth key embedded")}</p>
+              <p className="text-xs text-graphite">{t("Install profile hint")}</p>
+              <p className="text-xs text-steel">{t("Auth key embedded")}</p>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
-              <div className="text-sm font-medium text-slate-200">
+            <div className="rounded-xl border border-mist bg-fog p-4 space-y-2">
+              <div className="text-sm font-medium text-ink">
                 {t("Mobile access")} · {t("Android access")}
               </div>
-              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-emerald-300 overflow-auto">
+              <pre className="bg-fog border border-mist rounded-xl p-3 text-xs text-live overflow-auto">
 {buildAndroidConfig(result.server_url, result.key)}
               </pre>
               <button
                 onClick={() =>
                   copy(buildAndroidConfig(result.server_url, result.key))
                 }
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded-lg"
+                className="text-xs bg-fog hover:bg-mist text-ink border border-mist px-2 py-1 rounded-xl"
               >
                 {t("Copy config")}
               </button>
-              <p className="text-xs text-slate-500">{t("Android note")}</p>
+              <p className="text-xs text-steel">{t("Android note")}</p>
             </div>
           </div>
         </div>
@@ -323,10 +323,10 @@ function KeyForm({
 }) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-graphite">
         生成后复制下方命令，在设备安装 Tailscale 客户端并运行即可自动加入网络；手机用户可直接下载移动端配置。
       </p>
-      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+      <div className="flex flex-wrap items-center gap-4 text-sm text-graphite">
         <label className="flex items-center gap-1">
           <input
             type="checkbox"
@@ -351,14 +351,14 @@ function KeyForm({
             max={720}
             value={hours}
             onChange={(e) => setHours(Math.max(1, Number(e.target.value) || 24))}
-            className="focus-ring w-20 bg-slate-800 border border-slate-700 rounded-lg p-1"
+            className="focus-ring w-20 bg-paper border border-mist rounded-xl p-1"
           />
         </label>
       </div>
       <button
         type="submit"
         disabled={busy}
-        className="bg-brand-600 hover:bg-brand-500 text-white py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
+        className="bg-ember hover:bg-ember-600 text-paper py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
       >
         {busy ? "生成中…" : "生成接入命令"}
       </button>

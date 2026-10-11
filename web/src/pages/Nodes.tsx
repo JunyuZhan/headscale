@@ -12,11 +12,11 @@ function StatusDot({ online }: { online: boolean }) {
       <span
         className={`w-2 h-2 rounded-full ${
           online
-            ? "bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60 status-pulse"
-            : "bg-slate-500"
+            ? "bg-live status-pulse"
+            : "bg-steel"
         }`}
       />
-      <span className={online ? "text-emerald-300" : "text-slate-400"}>
+      <span className={online ? "text-live" : "text-graphite"}>
         {online ? t("online") : t("offline")}
       </span>
     </span>
@@ -105,10 +105,10 @@ export default function Nodes() {
   }) => {
     const cls =
       tone === "red"
-        ? "text-red-300 hover:bg-red-500/15"
+        ? "text-[#a32d2d] hover:bg-[#fbeaea]"
         : tone === "amber"
-          ? "text-amber-300 hover:bg-amber-500/15"
-          : "text-brand-300 hover:bg-brand-500/15";
+          ? "text-[#9a6700] hover:bg-[#fbf3e6]"
+          : "text-ember hover:bg-[#fff3ec]";
     return (
       <button
         onClick={onClick}
@@ -122,16 +122,16 @@ export default function Nodes() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold text-white">{t("Nodes")}</h1>
+        <h1 className="text-[28px] leading-[1.3] tracking-heading font-semibold text-ink">{t("Nodes")}</h1>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 status-pulse" />
+          <span className="inline-flex items-center gap-1.5 text-xs text-graphite">
+            <span className="w-2 h-2 rounded-full bg-live status-pulse" />
             {t("Live")}
           </span>
           {isAdmin && (
             <button
               onClick={() => setShowAdd(true)}
-              className="bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
             >
               ＋ {t("Add device")}
             </button>
@@ -142,17 +142,17 @@ export default function Nodes() {
               loadInvites();
             }}
             disabled={busy}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm disabled:opacity-50 transition-colors"
+            className="bg-fog text-ink hover:bg-mist px-3 py-1.5 rounded-xl text-sm disabled:opacity-50 transition-colors"
           >
             {t("Refresh")}
           </button>
         </div>
       </div>
-      {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-800/60 text-slate-400 text-left">
+            <tr className="bg-fog text-graphite text-left">
               <th className="p-3 font-medium">{t("Name")}</th>
               <th className="p-3 font-medium">{t("User")}</th>
               <th className="p-3 font-medium">{t("Addresses")}</th>
@@ -166,18 +166,18 @@ export default function Nodes() {
             {nodes.map((n) => (
               <tr
                 key={n.id}
-                className="border-t border-slate-800 hover:bg-slate-800/40 transition-colors"
+                className="border-t border-mist hover:bg-fog transition-colors"
               >
-                <td className="p-3 text-slate-200 font-medium">{n.givenName ?? n.name}</td>
-                <td className="p-3 text-slate-400">{n.user?.name ?? "—"}</td>
-                <td className="p-3 text-slate-400 font-mono text-xs">
+                <td className="p-3 text-ink font-medium">{n.givenName ?? n.name}</td>
+                <td className="p-3 text-graphite">{n.user?.name ?? "—"}</td>
+                <td className="p-3 text-graphite font-mono text-xs">
                   {((n.ipAddresses ?? n.addresses) ?? []).join(", ") || "—"}
                 </td>
                 <td className="p-3">
                   <StatusDot online={!!(n.online ?? n.connected)} />
                 </td>
-                <td className="p-3 text-slate-400 text-xs">{fmt(n.lastSeen)}</td>
-                <td className="p-3 text-slate-400 text-xs">
+                <td className="p-3 text-graphite text-xs">{fmt(n.lastSeen)}</td>
+                <td className="p-3 text-graphite text-xs">
                   {(n.tags ?? []).join(" ") || "—"}
                 </td>
                 <td className="p-3 text-right whitespace-nowrap">
@@ -230,29 +230,29 @@ export default function Nodes() {
             {pending.map((iv) => (
               <tr
                 key={`inv-${iv.id}`}
-                className="border-t border-slate-800 bg-slate-900/40"
+                className="border-t border-mist bg-fog"
               >
-                <td className="p-3 text-slate-400 italic">
+                <td className="p-3 text-graphite italic">
                   {iv.hostname || iv.device_desc || "—"}
                 </td>
-                <td className="p-3 text-slate-500">{iv.target_user || "—"}</td>
-                <td className="p-3 text-slate-600 font-mono text-xs">—</td>
+                <td className="p-3 text-steel">{iv.target_user || "—"}</td>
+                <td className="p-3 text-steel font-mono text-xs">—</td>
                 <td className="p-3">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full border border-amber-400/70" />
-                    <span className="text-amber-300/90">{t("Pending join")}</span>
+                    <span className="w-2 h-2 rounded-full border border-[#f0e0c8]" />
+                    <span className="text-[#9a6700]">{t("Pending join")}</span>
                   </span>
                 </td>
-                <td className="p-3 text-slate-500 text-xs">—</td>
-                <td className="p-3 text-slate-600 text-xs">—</td>
-                <td className="p-3 text-right text-slate-500 text-xs whitespace-nowrap">
+                <td className="p-3 text-steel text-xs">—</td>
+                <td className="p-3 text-steel text-xs">—</td>
+                <td className="p-3 text-right text-steel text-xs whitespace-nowrap">
                   {t("Invite sent")} · {fmt(iv.expires_at).slice(0, 10)}
                 </td>
               </tr>
             ))}
             {nodes.length === 0 && pending.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-slate-500">
+                <td colSpan={7} className="p-6 text-center text-steel">
                   {t("No nodes")}
                 </td>
               </tr>
@@ -265,10 +265,10 @@ export default function Nodes() {
         <div className="card p-4 mt-5">
           <div className="flex items-start justify-between gap-3 mb-1">
             <div>
-              <h3 className="text-sm font-medium text-slate-200">
+              <h3 className="text-sm font-medium text-ink">
                 {t("Invite record")}
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-steel mt-0.5">
                 {t("Invited, not yet joined — the device will appear above once it joins.")}
               </p>
             </div>
@@ -277,7 +277,7 @@ export default function Nodes() {
                 <>
                   <button
                     onClick={() => setShowExpired((v) => !v)}
-                    className="text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+                    className="text-xs text-graphite border border-mist rounded-xl px-2.5 py-1.5 hover:bg-paper hover:text-ink transition-colors"
                   >
                     {showExpired
                       ? t("Hide expired")
@@ -288,7 +288,7 @@ export default function Nodes() {
                       if (window.confirm(`${t("Clear expired invites")}？`))
                         run(t("Clear failed"), () => admin.purgeExpiredInvites());
                     }}
-                    className="text-xs text-amber-300 border border-amber-500/40 rounded-lg px-2.5 py-1.5 hover:bg-amber-500/15 transition-colors"
+                    className="text-xs text-[#9a6700] border border-[#f0e0c8] rounded-xl px-2.5 py-1.5 hover:bg-[#fbf3e6] transition-colors"
                   >
                     {t("Clear expired")}
                   </button>
@@ -298,7 +298,7 @@ export default function Nodes() {
           </div>
           <div className="overflow-auto mt-3">
             <table className="w-full text-sm">
-              <thead className="text-slate-400">
+              <thead className="text-graphite">
                 <tr className="text-left">
                   <th className="py-1 pr-3">{t("Applicant")}</th>
                   <th className="py-1 pr-3">{t("Device")}</th>
@@ -311,7 +311,7 @@ export default function Nodes() {
                   <th className="py-1 text-right">{t("Actions")}</th>
                 </tr>
               </thead>
-              <tbody className="text-slate-300">
+              <tbody className="text-graphite">
                 {invites
                   .filter(
                     (iv) =>
@@ -329,7 +329,7 @@ export default function Nodes() {
                     return (
                       <tr
                         key={iv.id}
-                        className={`border-t border-slate-800 ${
+                        className={`border-t border-mist ${
                           expired ? "opacity-50" : ""
                         }`}
                       >
@@ -350,7 +350,7 @@ export default function Nodes() {
                                 admin.deleteInvite(iv.id),
                               )
                             }
-                            className="text-red-300 hover:bg-red-500/15 px-2 py-0.5 rounded-md text-xs transition-colors"
+                            className="text-[#a32d2d] hover:bg-[#fbeaea] px-2 py-0.5 rounded-md text-xs transition-colors"
                           >
                             {t("Delete")}
                           </button>

@@ -28,7 +28,7 @@ function AppInner() {
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-slate-400">{t("Loading…")}</div>;
+    return <div className="p-8 text-graphite">{t("Loading…")}</div>;
   }
 
   return (

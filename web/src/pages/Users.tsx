@@ -43,46 +43,46 @@ export default function Users() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white">{t("Users")}</h1>
-      <p className="text-sm text-slate-400 mt-1 mb-5">
+      <h1 className="text-[28px] leading-[1.3] tracking-heading font-semibold text-ink">{t("Users")}</h1>
+      <p className="text-sm text-graphite mt-1 mb-5">
         {t("Headscale users — each maps to a set of joinable devices.")}
       </p>
 
-      {error && <div className="text-red-400 mb-3 text-sm">{error}</div>}
+      {error && <div className="text-[#a32d2d] mb-3 text-sm">{error}</div>}
 
       <form onSubmit={create} className="card p-4 mb-5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs text-slate-400 mb-1">
+            <label className="block text-xs text-graphite mb-1">
               {t("New user name")}
             </label>
             <input
-              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+              className="focus-ring w-full bg-paper border border-mist rounded-xl px-3 py-2 text-sm text-ink"
               placeholder="owner"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-steel mt-1">
               {t("Machine id used in ACLs and join commands")}
             </p>
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">
+            <label className="block text-xs text-graphite mb-1">
               {t("Display name")}
             </label>
             <input
-              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+              className="focus-ring w-full bg-paper border border-mist rounded-xl px-3 py-2 text-sm text-ink"
               placeholder={t("e.g. real name / nickname")}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">
+            <label className="block text-xs text-graphite mb-1">
               {t("Email")}
             </label>
             <input
-              className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200"
+              className="focus-ring w-full bg-paper border border-mist rounded-xl px-3 py-2 text-sm text-ink"
               placeholder="user@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -92,7 +92,7 @@ export default function Users() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-ember hover:bg-ember-600 text-paper px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             {t("Create")}
           </button>
@@ -102,7 +102,7 @@ export default function Users() {
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-800/60 text-slate-400 text-left">
+            <tr className="bg-fog text-graphite text-left">
               <th className="p-3 font-medium">{t("Name")}</th>
               <th className="p-3 font-medium">{t("Display name")}</th>
               <th className="p-3 font-medium">{t("Email")}</th>
@@ -113,14 +113,14 @@ export default function Users() {
             {users.map((u) => (
               <tr
                 key={u.id}
-                className="border-t border-slate-800 hover:bg-slate-800/40 transition-colors"
+                className="border-t border-mist hover:bg-fog transition-colors"
               >
-                <td className="p-3 text-slate-200 font-medium">{u.name}</td>
-                <td className="p-3 text-slate-400">{u.displayName ?? "—"}</td>
-                <td className="p-3 text-slate-400">{u.email ?? "—"}</td>
+                <td className="p-3 text-ink font-medium">{u.name}</td>
+                <td className="p-3 text-graphite">{u.displayName ?? "—"}</td>
+                <td className="p-3 text-graphite">{u.email ?? "—"}</td>
                 <td className="p-3 text-right">
                   <button
-                    className="text-red-300 hover:bg-red-500/15 px-2 py-1 rounded-md text-xs font-medium transition-colors"
+                    className="text-[#a32d2d] hover:bg-[#fbeaea] px-2 py-1 rounded-md text-xs font-medium transition-colors"
                     onClick={() => {
                       if (window.confirm(`${t("Delete user")} ${u.name}？`))
                         run(t("Delete failed"), () => api.deleteUser(u.id));
@@ -133,7 +133,7 @@ export default function Users() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-6 text-center text-slate-500">
+                <td colSpan={4} className="p-6 text-center text-steel">
                   {t("No users")}
                 </td>
               </tr>
