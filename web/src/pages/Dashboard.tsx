@@ -41,64 +41,59 @@ export default function Dashboard() {
       label: t("Nodes"),
       value: stats?.nodes,
       sub: stats ? `${stats.online} ${t("online")}` : undefined,
-      accent: "from-brand-500/20 to-brand-700/5 text-brand-300 border-brand-500/30",
     },
     ...(me.role === "admin"
-      ? [
-          {
-            label: t("Users"),
-            value: stats?.users,
-            accent:
-              "from-emerald-500/15 to-emerald-700/5 text-emerald-300 border-emerald-500/30",
-          },
-        ]
+      ? [{ label: t("Users"), value: stats?.users, sub: undefined as string | undefined }]
       : []),
     {
       label: t("Pre-auth keys"),
       value: stats?.keys,
-      accent:
-        "from-amber-500/15 to-amber-700/5 text-amber-300 border-amber-500/30",
+      sub: undefined as string | undefined,
     },
   ];
 
+  const liveBadge = stats && stats.online > 0;
+
   return (
     <div>
-      <h1 className="text-2xl font-semibibold text-white mb-1">{t("Overview")}</h1>
-      <p className="text-slate-400 text-sm mb-6">
+      <h1 className="text-[36px] leading-[1.21] tracking-heading font-semibold text-ink mb-2">
+        {t("Overview")}
+      </h1>
+      <p className="text-sm text-graphite mb-8 max-w-[640px]">
         {me.role === "admin"
           ? "管理节点、用户、预授权密钥与访问控制策略。"
           : "在「我的设备」中查看你的设备并生成接入密钥。"}
       </p>
-      {error && <div className="text-red-400 mb-4">{error}</div>}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      {error && <div className="text-sm text-[#a32d2d] mb-6">{error}</div>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {cards.map((c) => (
-          <div
-            key={c.label}
-            className={`rounded-xl border bg-gradient-to-br p-5 ${c.accent}`}
-          >
-            <div className="text-sm opacity-90">{c.label}</div>
-            <div className="text-3xl font-bold text-white mt-1">
+          <div key={c.label} className="rounded-xl border border-mist bg-paper p-6">
+            <div className="text-[13px] text-graphite">{c.label}</div>
+            <div className="text-[36px] leading-none tracking-heading font-semibold text-ink mt-3">
               {c.value ?? "—"}
             </div>
-            {c.sub && <div className="text-xs mt-1 opacity-80">{c.sub}</div>}
+            {c.sub && <div className="text-xs text-pewter mt-2">{c.sub}</div>}
           </div>
         ))}
       </div>
 
-      <div className="mt-6 card p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium text-white">网络状态</h2>
+      <div className="rounded-xl border border-mist bg-paper p-6 mt-8">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-base font-semibold text-ink">网络状态</h2>
           <span
-            className={`text-xs px-2 py-0.5 rounded-full ${
-              stats && stats.online > 0
-                ? "bg-emerald-900/60 text-emerald-300"
-                : "bg-slate-700 text-slate-300"
+            className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md font-medium ${
+              liveBadge ? "bg-live-soft text-live" : "bg-fog text-graphite"
             }`}
           >
+            {liveBadge && (
+              <span className="w-1.5 h-1.5 rounded-full bg-live status-pulse" />
+            )}
             {stats ? `${stats.online}/${stats.nodes} ${t("online")}` : "—"}
           </span>
         </div>
-        <p className="text-sm text-slate-400 mt-2">
+        <p className="text-[15px] leading-[1.55] text-graphite mt-3 max-w-[640px]">
           {me.role === "admin"
             ? "节点通过预授权密钥或邀请命令接入，成员之间默认隔离，仅可访问被标记为 tag:server 的内网服务器节点。"
             : "你接入的设备会出现在「我的设备」中，可随时生成新的接入密钥或吊销设备。"}

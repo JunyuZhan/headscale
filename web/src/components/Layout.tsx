@@ -54,7 +54,6 @@ function Icon({ name, className = "w-5 h-5" }: { name: string; className?: strin
         <path d="M9 12l2 2 4-4" />
       </>
     ),
-    invite: <path d="M12 5v14M5 12h14" />,
     accounts: (
       <>
         <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
@@ -115,8 +114,8 @@ function NavGroup({
   t: (s: string) => string;
 }) {
   return (
-    <div className="mb-4">
-      <div className="px-3 mb-1 text-[11px] uppercase tracking-wider text-slate-500 font-medium">
+    <div className="mb-5">
+      <div className="px-3 mb-2 text-[11px] uppercase tracking-[0.08em] text-steel font-medium">
         {label}
       </div>
       <nav className="space-y-0.5">
@@ -126,14 +125,14 @@ function NavGroup({
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors border-l-2 ${
                 isActive
-                  ? "bg-brand-600/15 text-brand-300 border-l-2 border-brand-500"
-                  : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200 border-l-2 border-transparent"
+                  ? "bg-fog text-ink font-medium border-ember"
+                  : "text-graphite hover:bg-fog hover:text-ink border-transparent"
               }`
             }
           >
-            <Icon name={item.icon} className="w-5 h-5" />
+            <Icon name={item.icon} className="w-[18px] h-[18px]" />
             <span>{t(item.key)}</span>
           </NavLink>
         ))}
@@ -200,18 +199,18 @@ export default function Layout({
   };
 
   return (
-    <div className="flex h-full">
-      <aside className="w-64 shrink-0 bg-slate-900/95 border-r border-slate-800 flex flex-col">
-        <div className="px-4 pt-5 pb-4">
+    <div className="flex h-full bg-paper">
+      <aside className="w-64 shrink-0 bg-paper border-r border-mist flex flex-col">
+        <div className="px-5 pt-6 pb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-lg flex items-center justify-center font-bold text-white text-lg">
+            <div className="w-10 h-10 rounded-xl bg-ink flex items-center justify-center font-semibold text-paper text-lg">
               H
             </div>
             <div>
-              <div className="text-white font-semibold leading-tight">
+              <div className="text-ink font-semibold leading-tight">
                 Headscale
               </div>
-              <div className="text-[11px] text-slate-500">自建 VPN 控制台</div>
+              <div className="text-[11px] text-steel">自建 VPN 控制台</div>
             </div>
           </div>
         </div>
@@ -223,16 +222,14 @@ export default function Layout({
           )}
         </div>
 
-        <div className="border-t border-slate-800 p-3">
+        <div className="border-t border-mist p-3">
           <div className="flex items-center gap-3 px-1 mb-2">
-            <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-semibold text-slate-200">
+            <div className="w-9 h-9 rounded-full bg-fog border border-mist flex items-center justify-center text-sm font-medium text-ink">
               {initials}
             </div>
             <div className="min-w-0">
-              <div className="text-sm text-slate-200 truncate">
-                {me.username}
-              </div>
-              <div className="text-[11px] text-slate-500">
+              <div className="text-sm text-ink truncate">{me.username}</div>
+              <div className="text-[11px] text-steel">
                 {t(me.role)}
                 {me.role === "user" && me.headscale_user
                   ? ` · ${me.headscale_user}`
@@ -241,14 +238,14 @@ export default function Layout({
             </div>
           </div>
           <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-graphite hover:bg-fog hover:text-ink transition-colors"
             onClick={() => setPwOpen(true)}
           >
             <Icon name="lock" className="w-4 h-4" />
             {t("Change password")}
           </button>
           <button
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-graphite hover:bg-fog hover:text-ink transition-colors"
             onClick={logout}
           >
             <Icon name="logout" className="w-4 h-4" />
@@ -259,44 +256,44 @@ export default function Layout({
 
       {pwOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-abyss/40 backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => setPwOpen(false)}
         >
           <div
-            className="bg-slate-900 border border-slate-800 rounded-xl p-5 w-80 space-y-3 shadow-2xl"
+            className="bg-paper border border-mist rounded-xl p-5 w-80 space-y-3 shadow-[0_16px_48px_-12px_rgba(0,7,16,0.28)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-base font-semibold text-ink">
               {t("Change password")}
             </h3>
-            {pwError && <div className="text-red-400 text-sm">{pwError}</div>}
-            {pwMsg && <div className="text-emerald-400 text-sm">{pwMsg}</div>}
+            {pwError && <div className="text-sm text-[#a32d2d]">{pwError}</div>}
+            {pwMsg && <div className="text-sm text-live">{pwMsg}</div>}
             <form onSubmit={changePassword} className="space-y-2">
               <input
                 type="password"
                 value={pwOld}
                 onChange={(e) => setPwOld(e.target.value)}
                 placeholder={t("Old password")}
-                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"
+                className="focus-ring w-full bg-paper border border-mist rounded-xl p-2 text-sm text-ink placeholder:text-steel"
               />
               <input
                 type="password"
                 value={pwNew}
                 onChange={(e) => setPwNew(e.target.value)}
                 placeholder={t("New password")}
-                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"
+                className="focus-ring w-full bg-paper border border-mist rounded-xl p-2 text-sm text-ink placeholder:text-steel"
               />
               <input
                 type="password"
                 value={pwConfirm}
                 onChange={(e) => setPwConfirm(e.target.value)}
                 placeholder={t("Confirm password")}
-                className="focus-ring w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-slate-200"
+                className="focus-ring w-full bg-paper border border-mist rounded-xl p-2 text-sm text-ink placeholder:text-steel"
               />
               <button
                 type="submit"
                 disabled={pwBusy}
-                className="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                className="w-full bg-ember hover:bg-ember-600 text-paper py-2 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
               >
                 {pwBusy ? t("Loading…") : t("Change password")}
               </button>
@@ -305,16 +302,16 @@ export default function Layout({
         </div>
       )}
 
-      <main className="flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 py-3 flex items-center justify-between">
-          <div className="text-sm text-slate-400">
+      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="shrink-0 bg-paper/85 backdrop-blur border-b border-mist px-8 py-3 flex items-center justify-between">
+          <div className="text-[13px] text-graphite">
             {t(me.role === "admin" ? "Administration" : "Workspace")}
           </div>
           <div className="flex items-center gap-2">
             <Notifications isAdmin={isAdmin} />
             <button
               onClick={() => setLang(lang === "zh" ? "en" : "zh")}
-              className="flex items-center gap-1.5 text-xs text-slate-400 border border-slate-700 rounded-lg px-2.5 py-1.5 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-graphite border border-mist rounded-xl px-2.5 py-1.5 hover:bg-fog hover:text-ink transition-colors"
               title="Language / 语言"
             >
               <Icon name="globe" className="w-4 h-4" />
@@ -322,8 +319,10 @@ export default function Layout({
             </button>
           </div>
         </div>
-        <div className="p-6">
-          <Outlet context={me} />
+        <div className="flex-1 overflow-auto">
+          <div className="max-w-[1200px] mx-auto px-8 py-8">
+            <Outlet context={me} />
+          </div>
         </div>
       </main>
     </div>

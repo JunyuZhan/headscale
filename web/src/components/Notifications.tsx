@@ -3,17 +3,18 @@ import { admin, self, type Event } from "../api/client";
 import { useI18n } from "../i18n";
 import { useEventStream } from "../lib/useEventStream";
 
-// Reusable color mapping for event-type chips (kept in sync with Events.tsx).
+// Reusable colour mapping for event-type chips (kept in sync with Events.tsx).
+// These are semantic encodings (severity), not brand accents.
 function badgeClass(type: string): string {
   if (type.startsWith("login_fail") || type === "login_blocked")
-    return "bg-red-500/15 text-red-300";
+    return "bg-[#fcebeb] text-[#a32d2d]";
   if (type === "node_offline" || type === "key_expiring")
-    return "bg-amber-500/15 text-amber-300";
+    return "bg-[#faeeda] text-[#854f0b]";
   if (type === "delete_user" || type === "node_delete" || type === "reset_password")
-    return "bg-orange-500/15 text-orange-300";
+    return "bg-[#fff3ec] text-[#c94500]";
   if (type === "login" || type === "node_join" || type === "create_key" || type === "create_user")
-    return "bg-emerald-500/15 text-emerald-300";
-  return "bg-slate-500/15 text-slate-300";
+    return "bg-[#e6f5ee] text-[#0b6b45]";
+  return "bg-fog text-graphite";
 }
 
 // Human-friendly Chinese/English label per event type.
@@ -43,6 +44,8 @@ const TYPE_LABEL: Record<string, string> = {
 function label(type: string): string {
   return TYPE_LABEL[type] ?? type;
 }
+
+const FLOATING_SHADOW = "shadow-[0_16px_48px_-12px_rgba(0,7,16,0.28)]";
 
 export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
   const { t } = useI18n();
@@ -114,7 +117,7 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
     <div className="relative">
       <button
         onClick={toggle}
-        className="relative flex items-center justify-center w-9 h-9 text-slate-400 border border-slate-700 rounded-lg hover:bg-slate-800 hover:text-slate-200 transition-colors"
+        className="relative flex items-center justify-center w-9 h-9 text-graphite border border-mist rounded-xl hover:bg-fog hover:text-ink transition-colors"
         title={t("Notifications")}
         aria-label={t("Notifications")}
       >
@@ -131,7 +134,7 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
           <path d="M13.7 21a2 2 0 01-3.4 0" />
         </svg>
         {unread > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[1.05rem] h-[1.05rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[1.05rem] h-[1.05rem] px-1 rounded-full bg-ember text-paper text-[10px] font-semibold flex items-center justify-center">
             {unread > 99 ? "99+" : unread}
           </span>
         )}
@@ -141,9 +144,11 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
         <>
           {/* click-away layer */}
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30">
-            <div className="px-3 py-2 border-b border-slate-800 flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-200">
+          <div
+            className={`absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-paper border border-mist rounded-xl z-30 ${FLOATING_SHADOW}`}
+          >
+            <div className="px-3 py-2 border-b border-mist flex items-center justify-between">
+              <span className="text-sm font-medium text-ink">
                 {t("Notifications")}
               </span>
               <button
@@ -151,33 +156,33 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
                   markRead(events);
                   setOpen(false);
                 }}
-                className="text-[11px] text-slate-400 hover:text-slate-200"
+                className="text-[11px] text-graphite hover:text-ink"
               >
                 {t("Mark all read")}
               </button>
             </div>
             {events.length === 0 ? (
-              <div className="p-4 text-sm text-slate-500">{t("No notifications")}</div>
+              <div className="p-4 text-sm text-steel">{t("No notifications")}</div>
             ) : (
               <ul>
                 {events.slice(0, 30).map((e) => (
                   <li
                     key={e.id}
-                    className="px-3 py-2 border-b border-slate-800/60 last:border-0"
+                    className="px-3 py-2 border-b border-mist/50 last:border-0"
                   >
                     <div className="flex items-center gap-2">
                       <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass(
+                        className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-medium ${badgeClass(
                           e.type,
                         )}`}
                       >
                         {label(e.type)}
                       </span>
-                      <span className="text-[11px] text-slate-500 ml-auto whitespace-nowrap">
+                      <span className="text-[11px] text-steel ml-auto whitespace-nowrap">
                         {new Date(e.time).toLocaleTimeString()}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-300 mt-1 truncate">
+                    <div className="text-xs text-graphite mt-1 truncate">
                       {e.target ? `${e.target}` : ""}
                       {e.detail ? ` · ${e.detail}` : ""}
                     </div>
@@ -194,18 +199,18 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
         {toasts.map((e) => (
           <div
             key={e.id}
-            className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl px-3 py-2 animate-[statusPulse_0s] "
+            className={`bg-paper border border-mist rounded-xl px-3 py-2 ${FLOATING_SHADOW}`}
           >
             <div className="flex items-center gap-2">
               <span
-                className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass(
+                className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-medium ${badgeClass(
                   e.type,
                 )}`}
               >
                 {label(e.type)}
               </span>
             </div>
-            <div className="text-xs text-slate-300 mt-1">
+            <div className="text-xs text-graphite mt-1">
               {e.target ? `${e.target}` : ""}
               {e.detail ? ` · ${e.detail}` : ""}
             </div>
