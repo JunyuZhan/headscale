@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { admin, self, type Event } from "../api/client";
 import { useI18n } from "../i18n";
 import { useEventStream } from "../lib/useEventStream";
+import { formatShort } from "../lib/datetime";
 
 // Reusable colour mapping for event-type chips (kept in sync with Events.tsx).
 // These are semantic encodings (severity), not brand accents.
@@ -179,7 +180,7 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
                         {label(e.type)}
                       </span>
                       <span className="text-[11px] text-steel ml-auto whitespace-nowrap">
-                        {new Date(e.time).toLocaleTimeString()}
+                        {formatShort(e.time)}
                       </span>
                     </div>
                     <div className="text-xs text-graphite mt-1 truncate">
