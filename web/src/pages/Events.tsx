@@ -10,7 +10,9 @@ function badgeClass(type: string): string {
   if (type === "node_offline" || type === "key_expiring")
     return "bg-[color:var(--warning-bg)] text-[color:var(--warning)]";
   if (type === "delete_user" || type === "node_delete" || type === "reset_password")
-    return "bg-orange-500/15 text-orange-300";
+    // Was `bg-orange-500/15 text-orange-300` — a leftover from the old dark UI
+    // that rendered light-orange-on-light-orange (1.45:1) in the light theme.
+    return "bg-[color:var(--info-bg)] text-[color:var(--info)]";
   if (type === "login" || type === "node_join" || type === "create_key" || type === "create_user")
     return "bg-live-soft text-live";
   return "bg-fog text-graphite";

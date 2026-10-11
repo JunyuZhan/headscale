@@ -204,7 +204,7 @@ export default function Policy() {
           <button
             onClick={save}
             disabled={busy}
-            className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded text-sm disabled:opacity-50"
+            className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-3 py-1.5 rounded text-sm disabled:opacity-50"
           >
             {t("Save")}
           </button>
@@ -240,7 +240,7 @@ export default function Policy() {
           ) : (
             Object.entries(groups).map(([g, m]) => (
               <div key={g} className="text-sm">
-                <span className="text-ember">{g}</span>
+                <span className="text-[color:var(--ember-text)]">{g}</span>
                 <span className="text-graphite"> → {m.join(", ")}</span>
               </div>
             ))
@@ -252,7 +252,7 @@ export default function Policy() {
           ) : (
             Object.entries(hosts).map(([h, c]) => (
               <div key={h} className="text-sm">
-                <span className="text-ember">{h}</span>
+                <span className="text-[color:var(--ember-text)]">{h}</span>
                 <span className="text-graphite"> → {c}</span>
               </div>
             ))
@@ -264,7 +264,7 @@ export default function Policy() {
           ) : (
             Object.entries(tagOwners).map(([tag, o]) => (
               <div key={tag} className="text-sm">
-                <span className="text-ember">{tag}</span>
+                <span className="text-[color:var(--ember-text)]">{tag}</span>
                 <span className="text-graphite"> → {o.join(", ")}</span>
               </div>
             ))
@@ -333,7 +333,7 @@ export default function Policy() {
           />
           <button
             onClick={addRule}
-            className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded text-sm"
+            className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-3 py-1.5 rounded text-sm"
           >
             {t("Add")}
           </button>

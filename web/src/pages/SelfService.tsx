@@ -98,7 +98,7 @@ export default function SelfService() {
       <div>
         <h2 className="text-lg font-semibold text-ink">{t("My devices")}</h2>
         <p className="text-sm text-graphite">
-          账号 <span className="text-ember">{me.username}</span>
+          账号 <span className="text-[color:var(--ember-text)]">{me.username}</span>
           {me.headscale_user
             ? ` 映射到 Headscale 用户 ${me.headscale_user}`
             : ""}
@@ -198,7 +198,7 @@ export default function SelfService() {
             </h3>
             <p className="text-xs text-steel mb-3">
               {t("Token valid for")} {result.expiration_hours} {t("hours")} ·
-              {t("Revoke anytime from")} <span className="text-ember">{t("Nodes")}</span>
+              {t("Revoke anytime from")} <span className="text-[color:var(--ember-text)]">{t("Nodes")}</span>
             </p>
           </div>
 
@@ -271,7 +271,7 @@ export default function SelfService() {
                     buildMobileConfig(result.server_url, result.key),
                   )
                 }
-                className="bg-ember hover:bg-ember-600 text-paper px-3 py-2 rounded-xl text-sm font-medium transition-colors"
+                className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-3 py-2 rounded-xl text-sm font-medium transition-colors"
               >
                 {t("Download profile (iOS)")}
               </button>
@@ -358,7 +358,7 @@ function KeyForm({
       <button
         type="submit"
         disabled={busy}
-        className="bg-ember hover:bg-ember-600 text-paper py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
+        className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] py-2 px-4 rounded-md text-sm font-medium disabled:opacity-50"
       >
         {busy ? "生成中…" : "生成接入命令"}
       </button>

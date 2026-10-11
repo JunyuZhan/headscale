@@ -31,7 +31,7 @@ export default function ThemeToggle() {
           title={o.label}
           className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
             pref === o.value
-              ? "bg-fog text-ember"
+              ? "bg-fog text-[color:var(--ember-text)]"
               : "text-graphite hover:bg-fog hover:text-ink"
           }`}
         >

@@ -134,7 +134,7 @@ export default function Notifications({ isAdmin }: { isAdmin: boolean }) {
           <path d="M13.7 21a2 2 0 01-3.4 0" />
         </svg>
         {unread > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[1.05rem] h-[1.05rem] px-1 rounded-full bg-ember text-paper text-[10px] font-semibold flex items-center justify-center">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[1.05rem] h-[1.05rem] px-1 rounded-full bg-ember text-[color:var(--on-ember)] text-[10px] font-semibold flex items-center justify-center">
             {unread > 99 ? "99+" : unread}
           </span>
         )}

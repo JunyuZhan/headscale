@@ -153,7 +153,7 @@ export default function TurnstileWidget({
               .then(() => setReady(true))
               .catch(() => setLoadError(true));
           }}
-          className="text-[12px] text-ember hover:text-ember-600 underline underline-offset-2"
+          className="text-[12px] text-[color:var(--ember-text)] hover:text-ember-600 underline underline-offset-2"
         >
           {t("Refresh")}
         </button>

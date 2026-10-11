@@ -108,7 +108,7 @@ export default function Nodes() {
         ? "text-[color:var(--danger)] hover:bg-[color:var(--danger-bg)]"
         : tone === "amber"
           ? "text-[color:var(--warning)] hover:bg-[color:var(--warning-bg)]"
-          : "text-ember hover:bg-[color:var(--info-bg)]";
+          : "text-[color:var(--ember-text)] hover:bg-[color:var(--info-bg)]";
     return (
       <button
         onClick={onClick}
@@ -131,7 +131,7 @@ export default function Nodes() {
           {isAdmin && (
             <button
               onClick={() => setShowAdd(true)}
-              className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
+              className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-3 py-1.5 rounded-xl text-sm font-medium transition-colors"
             >
               ＋ {t("Add device")}
             </button>

@@ -117,22 +117,22 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   return (
     <div className="min-h-full flex">
       {/* Brand panel (Brex "carbon" surface, hidden on small screens). */}
-      <div className="hidden md:flex md:w-[46%] lg:w-1/2 bg-[color:var(--auth-panel)] text-paper flex-col justify-between p-12 lg:p-16">
+      <div className="hidden md:flex md:w-[46%] lg:w-1/2 bg-[color:var(--auth-panel)] text-[color:var(--auth-panel-fg)] flex-col justify-between p-12 lg:p-16">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-ember flex items-center justify-center font-semibold text-paper text-lg">
+          <div className="w-10 h-10 rounded-xl bg-ember flex items-center justify-center font-semibold text-[color:var(--on-ember)] text-lg">
             H
           </div>
           <span className="text-lg font-semibold tracking-heading">Headscale</span>
-          <span className="text-sm text-steel">Web UI</span>
+          <span className="text-sm text-[color:var(--auth-panel-subtle)]">Web UI</span>
         </div>
 
         <div className="space-y-4">
-          <h1 className="text-3xl lg:text-4xl font-semibold tracking-heading leading-tight">
+          <h1 className="text-3xl lg:text-4xl font-semibold tracking-heading leading-tight text-[color:var(--auth-panel-fg)]">
             {mode === "setup"
               ? t("Welcome")
               : t("Sign in to your network console")}
           </h1>
-          <p className="text-[15px] leading-relaxed text-steel max-w-md">
+          <p className="text-[15px] leading-relaxed text-[color:var(--auth-panel-muted)] max-w-md">
             {mode === "setup"
               ? t(
                   "This is the first launch. Set a password for the default admin account to start using the console.",
@@ -141,7 +141,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-[12px] text-steel">
+        <div className="flex items-center gap-2 text-[12px] text-[color:var(--auth-panel-muted)]">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-ember" />
           {t("Protected by Cloudflare Turnstile")}
         </div>
@@ -223,7 +223,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="w-full bg-ember hover:bg-ember-600 text-paper py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
+              className="w-full bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
             >
               {busy ? t("Signing in…") : configLoading ? t("Loading…") : t("Create password")}
             </button>
@@ -235,7 +235,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
           >
             {/* Compact brand mark for small screens (panel hidden there). */}
             <div className="flex md:hidden items-center gap-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-ember flex items-center justify-center font-semibold text-paper text-base">
+              <div className="w-9 h-9 rounded-xl bg-ember flex items-center justify-center font-semibold text-[color:var(--on-ember)] text-base">
                 H
               </div>
               <span className="text-base font-semibold tracking-heading">
@@ -285,7 +285,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="w-full bg-ember hover:bg-ember-600 text-paper py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
+              className="w-full bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
             >
               {busy
                 ? t("Signing in…")

@@ -178,7 +178,7 @@ export default function PreAuthKeys() {
         <div className="sm:col-span-2">
           <button
             type="submit"
-            className="bg-ember hover:bg-ember-600 text-paper px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             {t("Create key")}
           </button>

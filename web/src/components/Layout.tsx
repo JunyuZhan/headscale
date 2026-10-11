@@ -269,7 +269,7 @@ export default function Layout({
 
       {pwOpen && (
         <div
-          className="fixed inset-0 bg-abyss/40 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-[color:var(--overlay)] backdrop-blur-sm flex items-center justify-center z-50"
           onClick={() => setPwOpen(false)}
         >
           <div
@@ -306,7 +306,7 @@ export default function Layout({
               <button
                 type="submit"
                 disabled={pwBusy}
-                className="w-full bg-ember hover:bg-ember-600 text-paper py-2 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
+                className="w-full bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] py-2 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors"
               >
                 {pwBusy ? t("Loading…") : t("Change password")}
               </button>
@@ -348,7 +348,7 @@ export default function Layout({
                         }}
                         className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-fog ${
                           l === lang
-                            ? "text-ember font-semibold"
+                            ? "text-[color:var(--ember-text)] font-semibold"
                             : "text-ink"
                         }`}
                       >

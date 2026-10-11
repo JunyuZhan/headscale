@@ -173,7 +173,7 @@ export default function WebUsers() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-ember hover:bg-ember-600 text-paper px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             {t("Create")}
           </button>
@@ -202,7 +202,7 @@ export default function WebUsers() {
                   <span
                     className={`inline-block rounded-full px-2 py-0.5 text-[11px] ${
                       a.role === "admin"
-                        ? "bg-[color:var(--info-bg)] text-ember"
+                        ? "bg-[color:var(--info-bg)] text-[color:var(--info)]"
                         : "bg-fog text-graphite"
                     }`}
                   >

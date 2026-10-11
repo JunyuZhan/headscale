@@ -88,7 +88,7 @@ export default function AddDeviceModal({
 
   return (
     <div
-      className="fixed inset-0 bg-abyss/40 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto p-4"
+      className="fixed inset-0 bg-[color:var(--overlay)] backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto p-4"
       onClick={onClose}
     >
       <div
@@ -200,7 +200,7 @@ export default function AddDeviceModal({
               <button
                 type="submit"
                 disabled={busy}
-                className="ml-auto bg-ember hover:bg-ember-600 text-paper py-2 px-4 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
+                className="ml-auto bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] py-2 px-4 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
               >
                 {busy ? t("Loading…") : t("Generate invite command")}
               </button>
@@ -271,7 +271,7 @@ export default function AddDeviceModal({
                           buildMobileConfig(result.server_url, result.key),
                         )
                       }
-                      className="bg-ember hover:bg-ember-600 text-paper px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+                      className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
                     >
                       {t("Download profile (iOS)")}
                     </button>

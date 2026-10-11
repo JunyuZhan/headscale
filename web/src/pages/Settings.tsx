@@ -251,7 +251,7 @@ export default function Settings() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-ember hover:bg-ember-600 text-paper py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
+          className="w-full bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors"
         >
           {busy ? t("Loading…") : t("Save")}
         </button>

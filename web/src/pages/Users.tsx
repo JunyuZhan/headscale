@@ -92,7 +92,7 @@ export default function Users() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-ember hover:bg-ember-600 text-paper px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            className="bg-ember hover:bg-ember-600 text-[color:var(--on-ember)] px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             {t("Create")}
           </button>
