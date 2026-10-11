@@ -41,8 +41,11 @@ function loadScript(): Promise<void> {
     const s = document.createElement("script");
     s.id = SCRIPT_ID;
     s.src = SCRIPT_SRC;
+    // Dynamic scripts are async by default; do NOT set defer — Cloudflare's
+    // explicit-render mode requires calling turnstile.render() directly once
+    // the script's load event fires, and using turnstile.ready() together with
+    // async/defer throws and prevents the widget from ever rendering.
     s.async = true;
-    s.defer = true;
     s.addEventListener("load", () => resolve());
     s.addEventListener("error", () =>
       reject(new Error("turnstile script load error")),
@@ -96,24 +99,21 @@ export default function TurnstileWidget({
 
   useEffect(() => {
     if (!ready || !hostRef.current) return;
-    const render = () => {
-      const ts = window.turnstile;
-      if (!hostRef.current || !ts) return;
-      hostRef.current.innerHTML = "";
-      const id = ts.render(hostRef.current, {
-        sitekey: siteKey,
-        action,
-        callback: (token: string) => cbRef.current(token),
-        "expired-callback": () => expRef.current?.(),
-        "error-callback": () => errRef.current?.(),
-      });
-      widgetIdRef.current = id;
-    };
-    if (window.turnstile?.ready) {
-      window.turnstile.ready(render);
-    } else {
-      render();
-    }
+    const ts = window.turnstile;
+    if (!ts) return;
+    // Explicit render mode: the loadScript() promise only resolves after the
+    // api.js `load` event, so `window.turnstile.render` is guaranteed available
+    // here. Do NOT wrap in turnstile.ready() — that throws when the script tag
+    // is async/defer and would stop the widget from rendering.
+    hostRef.current.innerHTML = "";
+    const id = ts.render(hostRef.current, {
+      sitekey: siteKey,
+      action,
+      callback: (token: string) => cbRef.current(token),
+      "expired-callback": () => expRef.current?.(),
+      "error-callback": () => errRef.current?.(),
+    });
+    widgetIdRef.current = id;
     return () => {
       try {
         if (widgetIdRef.current) window.turnstile?.reset(widgetIdRef.current);
