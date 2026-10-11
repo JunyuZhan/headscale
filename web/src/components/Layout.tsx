@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { auth, self, type Me } from "../api/client";
 import { useI18n, type Lang } from "../i18n";
@@ -171,31 +171,6 @@ export default function Layout({
   const [pwMsg, setPwMsg] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
-  const [translated, setTranslated] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
-
-  // Detect browser auto-translation: when the app is in Simplified mode it
-  // never emits these Traditional-only phrases. If they appear in the DOM,
-  // some extension or the browser's built-in translator rewrote our text.
-  useEffect(() => {
-    setTranslated(false);
-    setBannerDismissed(false);
-    if (lang !== "zh-Hans") return;
-    const canaries = [
-      "總覽", "節點", "使用者", "登入", "帳號", "設定", "資訊", "紀錄",
-      "驗證", "儲存", "顯示", "電子郵件", "複製", "裝置", "金鑰", "存取",
-    ];
-    const check = () => {
-      const body = document.body.innerText || "";
-      if (canaries.some((c) => body.includes(c))) setTranslated(true);
-    };
-    const t1 = window.setTimeout(check, 1000);
-    const t2 = window.setTimeout(check, 3000);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [lang]);
 
   const LANG_FULL: Record<Lang, string> = {
     "zh-Hans": "简体中文",
@@ -340,24 +315,6 @@ export default function Layout({
       )}
 
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        {translated && !bannerDismissed && (
-          <div className="shrink-0 bg-[#fff4e6] border-b border-[#ffd9a8] px-8 py-2.5 flex items-start gap-3 text-[13px] text-[#7a4a12]">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <div className="flex-1">
-              <span className="font-semibold">检测到本页文字被浏览器翻译成了繁体。</span>
-              这不是网站问题——请点击地址栏的翻译图标选择「不翻译此网站」或「保留原文」，并关闭翻译类扩展（Google 翻译 / 沉浸式翻译 / Mate 等），然后按 Cmd/Ctrl+Shift+R 硬刷新即可恢复简体。
-            </div>
-            <button
-              onClick={() => setBannerDismissed(true)}
-              className="text-[#7a4a12] hover:text-ink shrink-0 text-sm leading-none"
-              title="关闭提示"
-            >
-              ✕
-            </button>
-          </div>
-        )}
         <div className="shrink-0 bg-paper/85 backdrop-blur border-b border-mist px-8 py-3 flex items-center justify-between">
           <div className="text-[13px] text-graphite">
             {t(me.role === "admin" ? "Administration" : "Workspace")}

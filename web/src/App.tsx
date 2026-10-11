@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { auth, type Me } from "./api/client";
 import { LangProvider, useI18n } from "./i18n";
 import Layout from "./components/Layout";
+import TranslationBanner from "./components/TranslationBanner";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Nodes from "./pages/Nodes";
@@ -32,37 +33,40 @@ function AppInner() {
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          me ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Login onLogin={() => auth.me().then(setMe)} />
-          )
-        }
-      />
-      {me ? (
-        <Route element={<Layout me={me} onLogout={() => { setMe(null); }} />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/nodes" element={<Nodes />} />
-          <Route path="/myself" element={<SelfService />} />
-          {me.role === "admin" && (
-            <>
-              <Route path="/users" element={<Users />} />
-              <Route path="/accounts" element={<WebUsers />} />
-              <Route path="/keys" element={<PreAuthKeys />} />
-              <Route path="/policy" element={<Policy />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/settings" element={<Settings />} />
-            </>
-          )}
-        </Route>
-      ) : (
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      )}
-    </Routes>
+    <>
+      <TranslationBanner />
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            me ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Login onLogin={() => auth.me().then(setMe)} />
+            )
+          }
+        />
+        {me ? (
+          <Route element={<Layout me={me} onLogout={() => { setMe(null); }} />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/nodes" element={<Nodes />} />
+            <Route path="/myself" element={<SelfService />} />
+            {me.role === "admin" && (
+              <>
+                <Route path="/users" element={<Users />} />
+                <Route path="/accounts" element={<WebUsers />} />
+                <Route path="/keys" element={<PreAuthKeys />} />
+                <Route path="/policy" element={<Policy />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/settings" element={<Settings />} />
+              </>
+            )}
+          </Route>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        )}
+      </Routes>
+    </>
   );
 }
 
