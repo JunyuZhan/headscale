@@ -4,6 +4,7 @@ import { auth, type AuthConfig } from "../api/client";
 import { useI18n } from "../i18n";
 import TurnstileWidget from "../components/TurnstileWidget";
 import Logo from "../components/Logo";
+import ThemeToggle from "../components/ThemeToggle";
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
   const { t } = useI18n();
@@ -147,7 +148,12 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
       </div>
 
       {/* Form panel. */}
-      <div className="flex-1 flex items-center justify-center bg-fog p-6">
+      <div className="flex-1 flex items-center justify-center bg-fog p-6 relative">
+        {/* Theme switch — the login page has no app shell, so it needs its own
+            control (otherwise the theme is locked to system/localStorage). */}
+        <div className="absolute top-5 right-5 md:top-8 md:right-8">
+          <ThemeToggle />
+        </div>
         {mode === "setup" ? (
           <form
             onSubmit={submitSetup}
