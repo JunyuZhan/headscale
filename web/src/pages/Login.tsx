@@ -296,18 +296,6 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
                   ? t("Loading…")
                   : t("Sign in")}
             </button>
-
-            <p className="text-[12px] leading-[1.6] text-steel">
-              使用管理员分配的账号登录。首次部署无需配置：默认管理员为{" "}
-              <code className="font-mono text-[12px] bg-fog text-ink px-1.5 py-0.5 rounded-md">
-                admin
-              </code>
-              ，首次登录时设置密码即可开箱即用。如需固定口令，可在部署时用{" "}
-              <code className="font-mono text-[12px] bg-fog text-ink px-1.5 py-0.5 rounded-md">
-                WEBUI_BOOTSTRAP_ADMIN
-              </code>{" "}
-              指定。
-            </p>
           </form>
         )}
       </div>
